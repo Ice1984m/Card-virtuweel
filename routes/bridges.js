@@ -219,8 +219,8 @@ router.get('/', (req, res) => {
             placeholder="Typ hier een testbericht…" required></textarea>
         </div>
         <div class="form-group">
-          <label for="hops">Aantal relay-hops (1–5)</label>
-          <input id="hops" name="hops" type="number" min="1" max="5" value="3">
+          <label for="hops">Aantal relay-hops (${MIN_HOPS}–${MAX_HOPS})</label>
+          <input id="hops" name="hops" type="number" min="${MIN_HOPS}" max="${MAX_HOPS}" value="${DEFAULT_HOPS}">
         </div>
         <div class="form-actions">
           <button type="submit" class="btn">🚀 Verzend via relay-keten</button>

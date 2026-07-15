@@ -162,7 +162,7 @@ function sha256(data) {
  */
 function merkleRoot(leaves) {
   if (!leaves || leaves.length === 0) return sha256(EMPTY_MERKLE_LEAF);
-  let hashes = leaves.map(l => sha256(l)); // invoer is altijd string
+  let hashes = leaves.map(l => sha256(l));
   while (hashes.length > 1) {
     const next = [];
     for (let i = 0; i < hashes.length; i += 2) {
