@@ -4,9 +4,10 @@
  * Multi-hop Privacy Relay – Bridge Registry & Dispatch Router
  *
  * Routes:
- *   GET  /bridges           – publiek overzichtsdashboard + testformulier
- *   POST /bridges/dispatch  – verzend pakket via onion relay-keten
- *   GET  /bridges/events    – Server-Sent Events (SSE) live relay-stream
+ *   GET  /bridges              – publiek overzichtsdashboard + testformulier
+ *   POST /bridges/dispatch     – verzend pakket via onion relay-keten
+ *   GET  /bridges/result/:id  – toon resultaat van dispatch (PRG-patroon)
+ *   GET  /bridges/events       – Server-Sent Events (SSE) live relay-stream
  */
 
 const express = require('express');
@@ -31,6 +32,10 @@ const BRIDGE_DEFS = [
 
 // SSE-clientverbindingen
 const sseClients = new Set();
+
+// Tijdelijke opslag voor dispatch-resultaten (PRG-patroon, max 5 min TTL)
+const dispatchResults = new Map();
+const RESULT_TTL_MS = 5 * 60 * 1000;
 
 // ─── Bridge-initialisatie ──────────────────────────────────────────────────────
 
@@ -69,14 +74,29 @@ const bridges = initBridges();
 
 // ─── Hulpfuncties ────────────────────────────────────────────────────────────
 
+/** Fisher-Yates shuffle voor onbevooroordeelde willekeurige hop-selectie. */
+function fisherYatesShuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 function selectHops(n) {
-  return [...bridges].sort(() => Math.random() - 0.5).slice(0, n);
+  return fisherYatesShuffle(bridges).slice(0, n);
 }
 
 function broadcastSse(event, data) {
   const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   for (const client of sseClients) {
-    try { client.write(msg); } catch (_) { sseClients.delete(client); }
+    try {
+      client.write(msg);
+    } catch (err) {
+      console.error('[SSE] Fout bij schrijven naar client, verbinding verwijderd:', err.message);
+      sseClients.delete(client);
+    }
   }
 }
 
@@ -84,7 +104,9 @@ function broadcastSse(event, data) {
 
 router.get('/', (req, res) => {
   const log = readJson(LOG_FILE);
-  const logRoot = merkleRoot(log.map(e => e.packetId + e.timestamp));
+  const logRoot = log.length > 0
+    ? log[log.length - 1].cumulativeMerkleRoot
+    : merkleRoot([]);
   const recentLog = log.slice(-10).reverse();
 
   const bridgeRows = bridges.map(b => `
@@ -200,10 +222,21 @@ router.get('/', (req, res) => {
           var d = JSON.parse(e.data);
           var row = document.createElement('div');
           row.className = 'sse-row';
-          row.innerHTML =
-            '<span class="sse-time">' + new Date(d.timestamp).toLocaleTimeString('nl-NL') + '</span>' +
-            ' <span class="sse-packet">📦 ' + d.packetId.slice(0, 8) + '…</span>' +
-            ' via <span class="sse-hops">' + d.hops.join(' → ') + '</span>';
+          // Gebruik textContent/createTextNode om XSS te voorkomen
+          var timeSpan = document.createElement('span');
+          timeSpan.className = 'sse-time';
+          timeSpan.textContent = new Date(d.timestamp).toLocaleTimeString('nl-NL');
+          var packetSpan = document.createElement('span');
+          packetSpan.className = 'sse-packet';
+          packetSpan.textContent = '📦 ' + d.packetId.slice(0, 8) + '…';
+          var hopsSpan = document.createElement('span');
+          hopsSpan.className = 'sse-hops';
+          hopsSpan.textContent = d.hops.join(' → ');
+          row.appendChild(timeSpan);
+          row.appendChild(document.createTextNode(' via '));
+          row.appendChild(packetSpan);
+          row.appendChild(document.createTextNode(' '));
+          row.appendChild(hopsSpan);
           feed.prepend(row);
           if (feed.children.length > 20) feed.removeChild(feed.lastChild);
         });
@@ -241,29 +274,60 @@ router.post('/dispatch', (req, res) => {
     bridge.stats.packetsRelayed += 1;
     hopTrace.push(bridge.alias);
   }
-  const deliveredPayload = current.toString('utf8');
+  const deliveredOk = current.toString('utf8') === rawPayload;
 
   // Sla bijgewerkte stats op
   writeJson(BRIDGES_FILE, bridges);
 
-  // Voeg toe aan transparantie-log
+  // Voeg toe aan transparantie-log (inclusief cumulatieve Merkle-root voor O(1) admin lookup)
   const log = readJson(LOG_FILE);
+  const prevRoot = log.length > 0 ? log[log.length - 1].cumulativeMerkleRoot : merkleRoot([]);
+  const newRoot = merkleRoot([prevRoot, packetId + new Date().toISOString()]);
+  const timestamp = new Date().toISOString();
   const entry = {
     packetId,
     hops: hopTrace,
     payloadSize: Buffer.byteLength(rawPayload, 'utf8'),
     encryptedSize,
     packetHash,
-    timestamp: new Date().toISOString(),
+    cumulativeMerkleRoot: newRoot,
+    timestamp,
   };
   log.push(entry);
   writeJson(LOG_FILE, log);
 
   // Stuur SSE-event naar alle verbonden clients
-  broadcastSse('relay', { packetId, hops: hopTrace, timestamp: entry.timestamp });
+  broadcastSse('relay', { packetId, hops: hopTrace, timestamp });
 
-  // Nieuw Merkle-root na toevoeging
-  const newRoot = merkleRoot(log.map(e => e.packetId + e.timestamp));
+  // Sla resultaat op in geheugen en stuur door naar GET-resultaatpagina (PRG-patroon)
+  const resultId = uuidv4();
+  dispatchResults.set(resultId, {
+    packetId,
+    numHops,
+    hopTrace,
+    payloadSize: Buffer.byteLength(rawPayload, 'utf8'),
+    encryptedSize,
+    packetHash,
+    merkleRoot: newRoot,
+    deliveredOk,
+    createdAt: Date.now(),
+  });
+
+  // Automatisch verwijderen na TTL
+  setTimeout(() => dispatchResults.delete(resultId), RESULT_TTL_MS);
+
+  res.redirect(`/bridges/result/${resultId}`);
+});
+
+// ─── GET /bridges/result/:id ─────────────────────────────────────────────────
+
+router.get('/result/:id', (req, res) => {
+  const result = dispatchResults.get(req.params.id);
+  if (!result) {
+    return res.status(404).redirect('/bridges?flash=Resultaat+niet+gevonden+of+verlopen');
+  }
+
+  const { packetId, numHops, hopTrace, payloadSize, encryptedSize, packetHash, merkleRoot: root, deliveredOk } = result;
 
   const hopHtml = [
     '<div class="hop hop-origin">📤 Afzender</div>',
@@ -279,7 +343,7 @@ router.post('/dispatch', (req, res) => {
       <a href="/bridges" class="btn btn-secondary">← Terug naar bruggen</a>
     </div>
     <div class="relay-result">
-      <h1>✅ Pakket succesvol gerouteerd via ${numHops} hop${numHops !== 1 ? 's' : ''}</h1>
+      <h1>${deliveredOk ? '✅' : '⚠️'} Pakket ${deliveredOk ? 'succesvol' : 'met fouten'} gerouteerd via ${numHops} hop${numHops !== 1 ? 's' : ''}</h1>
 
       <div class="relay-path">
         <h3>🛤️ Routing-pad</h3>
@@ -301,15 +365,18 @@ router.post('/dispatch', (req, res) => {
         </div>
         <div class="detail-item">
           <span class="detail-label">Originele payload</span>
-          <span>${Buffer.byteLength(rawPayload, 'utf8')} bytes</span>
+          <span>${payloadSize} bytes</span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Versleuteld pakket</span>
           <span>${encryptedSize} bytes</span>
         </div>
         <div class="detail-item">
-          <span class="detail-label">Ontvangen inhoud</span>
-          <span>${escHtml(deliveredPayload)}</span>
+          <span class="detail-label">Aflevering</span>
+          <span>${deliveredOk
+            ? '<span class="badge badge-approved">✅ Correct afgeleverd</span>'
+            : '<span class="badge badge-rejected">⚠️ Afwijking gedetecteerd</span>'
+          }</span>
         </div>
         <div class="detail-item">
           <span class="detail-label">Pakket-hash (SHA-256)</span>
@@ -317,7 +384,7 @@ router.post('/dispatch', (req, res) => {
         </div>
         <div class="detail-item">
           <span class="detail-label">Transparantie-log Merkle-root</span>
-          <code class="mono">${escHtml(newRoot)}</code>
+          <code class="mono">${escHtml(root)}</code>
         </div>
       </div>
     </div>
@@ -349,3 +416,4 @@ router.get('/events', (req, res) => {
 });
 
 module.exports = router;
+

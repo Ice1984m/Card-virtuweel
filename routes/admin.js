@@ -167,7 +167,10 @@ router.get('/routing', (req, res) => {
   const log = readJson(LOG_FILE);
   const bridges = readJson(BRIDGES_FILE);
 
-  const logRoot = merkleRoot(log.map(e => e.packetId + e.timestamp));
+  // Gebruik de opgeslagen cumulatieve Merkle-root uit het laatste log-item (O(1))
+  const logRoot = log.length > 0
+    ? log[log.length - 1].cumulativeMerkleRoot
+    : merkleRoot([]);
   const totalPackets = log.length;
   const totalHops = log.reduce((sum, e) => sum + (e.hops ? e.hops.length : 0), 0);
 
@@ -184,20 +187,17 @@ router.get('/routing', (req, res) => {
         </tr>`;
       }).join('');
 
+  // Gebruik de vooraf berekende cumulatieve Merkle-root per log-item (O(n))
   const logRows = !log.length
     ? '<tr><td colspan="6" class="empty">Geen pakketten gerouteerd.</td></tr>'
-    : [...log].reverse().map((e, i) => {
-        const merkleLeaves = log.slice(0, log.length - i).map(x => x.packetId + x.timestamp);
-        const partialRoot = merkleRoot(merkleLeaves);
-        return `<tr>
-          <td><code class="mono">${escHtml(e.packetId.slice(0, 10))}…</code></td>
-          <td>${escHtml((e.hops || []).join(' → '))}</td>
-          <td>${escHtml(String(e.payloadSize))} / ${escHtml(String(e.encryptedSize || '—'))} bytes</td>
-          <td>${new Date(e.timestamp).toLocaleString('nl-NL')}</td>
-          <td><code class="mono">${escHtml(e.packetHash ? e.packetHash.slice(0, 16) : '—')}…</code></td>
-          <td><code class="mono">${escHtml(partialRoot.slice(0, 16))}…</code></td>
-        </tr>`;
-      }).join('');
+    : [...log].reverse().map(e => `<tr>
+        <td><code class="mono">${escHtml(e.packetId.slice(0, 10))}…</code></td>
+        <td>${escHtml((e.hops || []).join(' → '))}</td>
+        <td>${escHtml(String(e.payloadSize))} / ${escHtml(String(e.encryptedSize || '—'))} bytes</td>
+        <td>${new Date(e.timestamp).toLocaleString('nl-NL')}</td>
+        <td><code class="mono">${escHtml(e.packetHash ? e.packetHash.slice(0, 16) : '—')}…</code></td>
+        <td><code class="mono">${escHtml(e.cumulativeMerkleRoot ? e.cumulativeMerkleRoot.slice(0, 16) : '—')}…</code></td>
+      </tr>`).join('');
 
   res.send(layout('Admin – Routing Dashboard', `
     <div class="page-header">

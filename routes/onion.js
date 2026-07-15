@@ -125,7 +125,10 @@ function buildOnionPacket(payload, nodePubKeys) {
   } else {
     packet = Buffer.from(JSON.stringify(payload), 'utf8');
   }
-  // Van binnenste naar buitenste laag (laatste element = eerste hop na ontpellen)
+  // Versleutel van binnenste naar buitenste laag:
+  // het laatste element (hopN) wordt als eerste versleuteld en vormt de binnenste laag;
+  // het eerste element (hop1) wordt als laatste versleuteld en vormt de buitenste laag.
+  // Bij relaying ontsleutelt hop1 de buitenste laag en stuurt de rest door naar hop2.
   for (let i = nodePubKeys.length - 1; i >= 0; i--) {
     packet = encryptLayer(packet, nodePubKeys[i]);
   }
