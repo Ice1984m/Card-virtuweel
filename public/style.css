@@ -463,3 +463,14 @@ footer {
   font-size: .9rem;
 }
 .nfc-unsupported p { margin-bottom: .4rem; }
+
+/* ─── Demo notice ─── */
+.demo-notice {
+  background: #fef9c3;
+  border: 1px solid #fde047;
+  color: #713f12;
+  padding: .6rem 1rem;
+  border-radius: 6px;
+  font-size: .88rem;
+  margin-bottom: 1.25rem;
+}

@@ -153,6 +153,7 @@ function buildPaymentBlock(post) {
   return `
     <div class="payment-section">
       <h2>Betaling</h2>
+      <div class="demo-notice">⚠️ <strong>Demo modus</strong> – Er wordt geen echte betaling verwerkt.</div>
 
       <div class="payment-tabs" role="tablist">
         <button class="tab-btn tab-active" role="tab" data-tab="nfc">📲 NFC Betalen</button>
@@ -175,14 +176,14 @@ function buildPaymentBlock(post) {
               <span class="nfc-icon">📡</span>
             </div>
             <div class="amount-display">€${price}</div>
-            <button id="btnStartNfc" class="btn btn-nfc" onclick="startNfcPayment('${price}')">
+            <button id="btnStartNfc" class="btn btn-nfc">
               📲 Start NFC-betaling
             </button>
             <div id="nfcScanning" class="nfc-scanning" style="display:none">
               <p>🔍 Scannen… houd uw kaart tegen de telefoon</p>
             </div>
             <div id="nfcSuccess" class="success-msg" style="display:none">
-              ✅ NFC-betaling succesvol! Bedrag: €${price}
+              ✅ NFC-tag gelezen! Betaling geïnitieerd voor €${price} (demo modus)
             </div>
             <div id="nfcError" class="error" style="display:none"></div>
           </div>
@@ -191,7 +192,7 @@ function buildPaymentBlock(post) {
 
       <!-- Card tab -->
       <div id="tab-card" class="tab-panel" style="display:none">
-        <form class="form-card payment-form" id="cardForm" onsubmit="handleCardPayment(event)">
+        <form class="form-card payment-form" id="cardForm">
           <div class="form-group">
             <label for="cardName">Naam op kaart</label>
             <input id="cardName" type="text" placeholder="Jan Janssen" autocomplete="cc-name" required>
@@ -222,87 +223,93 @@ function buildPaymentBlock(post) {
           </div>
         </form>
         <div id="cardSuccess" class="success-msg" style="display:none">
-          ✅ Kaartbetaling succesvol verwerkt! (demo modus)
+          ✅ Kaartbetaling verwerkt! Bedrag: €${price} (demo modus)
         </div>
       </div>
     </div>
 
     <script>
-      // Tab switching
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
-          document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
-          btn.classList.add('tab-active');
-          document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
+      (function () {
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('tab-active'); });
+            document.querySelectorAll('.tab-panel').forEach(function (p) { p.style.display = 'none'; });
+            btn.classList.add('tab-active');
+            document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
+          });
         });
-      });
 
-      // Check NFC support on load
-      if (!('NDEFReader' in window)) {
-        document.getElementById('nfcUnsupported').style.display = 'block';
-        document.getElementById('nfcReady').style.display = 'none';
-      }
-
-      async function startNfcPayment(amount) {
-        const btn = document.getElementById('btnStartNfc');
-        const scanning = document.getElementById('nfcScanning');
-        const success = document.getElementById('nfcSuccess');
-        const errEl = document.getElementById('nfcError');
-        const anim = document.getElementById('nfcAnimation');
-
-        errEl.style.display = 'none';
-        success.style.display = 'none';
-
+        // Check NFC support on load
         if (!('NDEFReader' in window)) {
-          errEl.textContent = 'NFC wordt niet ondersteund door deze browser.';
-          errEl.style.display = 'block';
-          return;
+          document.getElementById('nfcUnsupported').style.display = 'block';
+          document.getElementById('nfcReady').style.display = 'none';
         }
 
-        try {
-          btn.disabled = true;
-          scanning.style.display = 'block';
-          anim.classList.add('nfc-active');
+        // NFC payment
+        document.getElementById('btnStartNfc').addEventListener('click', async function () {
+          var btn = this;
+          var scanning = document.getElementById('nfcScanning');
+          var success = document.getElementById('nfcSuccess');
+          var errEl = document.getElementById('nfcError');
+          var anim = document.getElementById('nfcAnimation');
 
-          const ndef = new NDEFReader();
-          await ndef.scan();
+          errEl.style.display = 'none';
+          success.style.display = 'none';
 
-          ndef.onreading = (event) => {
-            scanning.style.display = 'none';
-            anim.classList.remove('nfc-active');
-            btn.style.display = 'none';
-            success.style.display = 'block';
-            ndef.onreading = null;
-          };
+          if (!('NDEFReader' in window)) {
+            errEl.textContent = 'NFC wordt niet ondersteund door deze browser.';
+            errEl.style.display = 'block';
+            return;
+          }
 
-          ndef.onreadingerror = () => {
+          try {
+            btn.disabled = true;
+            scanning.style.display = 'block';
+            anim.classList.add('nfc-active');
+
+            var ndef = new NDEFReader();
+            await ndef.scan();
+
+            ndef.addEventListener('reading', function (event) {
+              scanning.style.display = 'none';
+              anim.classList.remove('nfc-active');
+              btn.style.display = 'none';
+              // Log tag serial number for demo transparency
+              console.info('NFC tag gelezen, serialNumber:', event.serialNumber);
+              success.style.display = 'block';
+              ndef.onreading = null;
+            });
+
+            ndef.addEventListener('readingerror', function () {
+              scanning.style.display = 'none';
+              anim.classList.remove('nfc-active');
+              btn.disabled = false;
+              errEl.textContent = 'NFC-tag kon niet worden gelezen. Probeer opnieuw.';
+              errEl.style.display = 'block';
+            });
+          } catch (err) {
             scanning.style.display = 'none';
             anim.classList.remove('nfc-active');
             btn.disabled = false;
-            errEl.textContent = 'NFC-tag kon niet worden gelezen. Probeer opnieuw.';
+            if (err.name === 'NotAllowedError') {
+              errEl.textContent = 'NFC-toegang geweigerd. Sta NFC-toegang toe in uw browser.';
+            } else if (err.name === 'NotSupportedError') {
+              errEl.textContent = 'NFC wordt niet ondersteund op dit apparaat.';
+            } else {
+              errEl.textContent = 'NFC-fout: ' + err.message;
+            }
             errEl.style.display = 'block';
-          };
-        } catch (err) {
-          scanning.style.display = 'none';
-          anim.classList.remove('nfc-active');
-          btn.disabled = false;
-          if (err.name === 'NotAllowedError') {
-            errEl.textContent = 'NFC-toegang geweigerd. Sta NFC-toegang toe in uw browser.';
-          } else if (err.name === 'NotSupportedError') {
-            errEl.textContent = 'NFC wordt niet ondersteund op dit apparaat.';
-          } else {
-            errEl.textContent = 'NFC-fout: ' + err.message;
           }
-          errEl.style.display = 'block';
-        }
-      }
+        });
 
-      function handleCardPayment(e) {
-        e.preventDefault();
-        document.getElementById('cardForm').style.display = 'none';
-        document.getElementById('cardSuccess').style.display = 'block';
-      }
+        // Card payment
+        document.getElementById('cardForm').addEventListener('submit', function (e) {
+          e.preventDefault();
+          document.getElementById('cardForm').style.display = 'none';
+          document.getElementById('cardSuccess').style.display = 'block';
+        });
+      }());
     </script>`;
 }
 
