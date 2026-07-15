@@ -14,7 +14,6 @@ const bridgesRouter = require('./routes/bridges');
 
 const app = express();
 const PORT = process.env.PORT || 4242;
-const APK_DOWNLOAD_URL = safeExternalUrl(process.env.APK_DOWNLOAD_URL);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -106,10 +105,13 @@ function installPage() {
 }
 
 function renderInstallPanel(compact) {
+  const installStep = APK_DOWNLOAD_URL
+    ? 'Tik op "Download APK" en open het gedownloade bestand.'
+    : 'Gebruik "Toevoegen aan startscherm" in Chrome zolang er nog geen APK-link is ingesteld.';
   const downloadBlock = APK_DOWNLOAD_URL
     ? `
         <div class="install-actions">
-          <a href="${escHtml(APK_DOWNLOAD_URL)}" class="btn btn-install" target="_blank" rel="noopener">⬇ Download APK</a>
+          <a href="${escHtml(APK_DOWNLOAD_URL)}" class="btn btn-install" target="_blank" rel="noopener noreferrer">⬇ Download APK</a>
         </div>
         <p class="install-hint">Open de link op uw Android-apparaat en bevestig daarna de installatie van het APK-bestand.</p>
         <p class="install-link mono">${escHtml(APK_DOWNLOAD_URL)}</p>
@@ -133,7 +135,7 @@ function renderInstallPanel(compact) {
       ${downloadBlock}
       <ol class="install-steps">
         <li>Open deze pagina op uw Android-telefoon.</li>
-        <li>${APK_DOWNLOAD_URL ? 'Tik op "Download APK" en open het gedownloade bestand.' : 'Gebruik "Toevoegen aan startscherm" in Chrome zolang er nog geen APK-link is ingesteld.'}</li>
+        <li>${installStep}</li>
         <li>Sta installatie toe als Android om bevestiging vraagt.</li>
         <li>Open de app na installatie vanaf uw startscherm.</li>
       </ol>
@@ -163,5 +165,7 @@ function safeExternalUrl(value) {
     return '';
   }
 }
+
+const APK_DOWNLOAD_URL = safeExternalUrl(process.env.APK_DOWNLOAD_URL);
 
 module.exports = app;
