@@ -30,6 +30,14 @@ const BRIDGE_DEFS = [
   { alias: 'Epsilon', region: 'DE-West'     },
 ];
 
+// Hop-limieten
+const MIN_HOPS = 1;
+const MAX_HOPS = 5;
+const DEFAULT_HOPS = 3;
+
+// UUID v4 validatiepatroon voor result-ID lookup
+const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 // SSE-clientverbindingen
 const sseClients = new Set();
 
@@ -256,7 +264,7 @@ router.post('/dispatch', (req, res) => {
     return res.redirect('/bridges?flash=Pakket-inhoud+is+verplicht');
   }
 
-  const numHops = Math.min(5, Math.max(1, parseInt(req.body.hops, 10) || 3));
+  const numHops = Math.min(MAX_HOPS, Math.max(MIN_HOPS, parseInt(req.body.hops, 10) || DEFAULT_HOPS));
   const selectedHops = selectHops(numHops);
   const pubKeys = selectedHops.map(b => b.publicKey);
 
@@ -281,9 +289,10 @@ router.post('/dispatch', (req, res) => {
 
   // Voeg toe aan transparantie-log (inclusief cumulatieve Merkle-root voor O(1) admin lookup)
   const log = readJson(LOG_FILE);
-  const prevRoot = log.length > 0 ? log[log.length - 1].cumulativeMerkleRoot : merkleRoot([]);
-  const newRoot = merkleRoot([prevRoot, packetId + new Date().toISOString()]);
   const timestamp = new Date().toISOString();
+  const prevRoot = log.length > 0 ? log[log.length - 1].cumulativeMerkleRoot : merkleRoot([]);
+  // Gebruik een scheidingsteken '|' om ambiguïteit in hash-invoer te voorkomen
+  const newRoot = merkleRoot([prevRoot, sha256(`${packetId}|${timestamp}`)]);
   const entry = {
     packetId,
     hops: hopTrace,
@@ -322,6 +331,10 @@ router.post('/dispatch', (req, res) => {
 // ─── GET /bridges/result/:id ─────────────────────────────────────────────────
 
 router.get('/result/:id', (req, res) => {
+  // Valideer dat het ID voldoet aan UUID v4-formaat voordat we de Map opzoeken
+  if (!UUID_V4_RE.test(req.params.id)) {
+    return res.redirect('/bridges');
+  }
   const result = dispatchResults.get(req.params.id);
   if (!result) {
     return res.status(404).redirect('/bridges?flash=Resultaat+niet+gevonden+of+verlopen');

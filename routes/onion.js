@@ -16,6 +16,9 @@ const crypto = require('crypto');
 
 const HKDF_INFO = 'card-virtuweel-onion-v1';
 
+// Vaste lege bladwaarde voor Merkle-boom (expliciete constante i.p.v. magische string)
+const EMPTY_MERKLE_LEAF = 'empty';
+
 // ─── Sleutelbeheer ───────────────────────────────────────────────────────────
 
 /**
@@ -155,7 +158,7 @@ function sha256(data) {
  * @returns {string}  Hex Merkle-root
  */
 function merkleRoot(leaves) {
-  if (!leaves || leaves.length === 0) return sha256('empty');
+  if (!leaves || leaves.length === 0) return sha256(EMPTY_MERKLE_LEAF);
   let hashes = leaves.map(l => sha256(String(l)));
   while (hashes.length > 1) {
     const next = [];
