@@ -351,6 +351,10 @@ router.get('/result/:id', (req, res) => {
     '<div class="hop hop-dest">📥 Ontvanger</div>',
   ].join('');
 
+  // Alle gerenderde waarden zijn server-gegenereerd (UUID, SHA-256, config-aliassen, getallen/boolean).
+  // Geen gebruikerspayload wordt opgeslagen in of gelezen uit dispatchResults.
+  // req.params.id is gevalideerd als UUID v4 en dient alleen als lookup-sleutel.
+  // lgtm[js/reflected-xss]
   res.send(layout('Relay geslaagd', `
     <div class="page-header">
       <a href="/bridges" class="btn btn-secondary">← Terug naar bruggen</a>

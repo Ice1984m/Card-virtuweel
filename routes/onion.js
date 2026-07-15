@@ -165,7 +165,8 @@ function merkleRoot(leaves) {
     for (let i = 0; i < hashes.length; i += 2) {
       const left = hashes[i];
       const right = i + 1 < hashes.length ? hashes[i + 1] : hashes[i];
-      next.push(sha256(left + right));
+      // Gebruik een scheidingsteken '|' om hash-botsingen door aaneenschakeling te voorkomen
+      next.push(sha256(left + '|' + right));
     }
     hashes = next;
   }
