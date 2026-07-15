@@ -4,8 +4,12 @@ const express = require('express');
 const path = require('path');
 const { layout } = require('./layout');
 const { readJson, writeJson, formatPrice, escHtml } = require('./helpers');
+const { sha256, merkleRoot } = require('./onion');
 
 const router = express.Router();
+
+const BRIDGES_FILE = path.join(__dirname, '../data/bridges.json');
+const LOG_FILE = path.join(__dirname, '../data/routing-log.json');
 
 const CERTS_FILE = path.join(__dirname, '../data/certificates.json');
 const POSTS_FILE = path.join(__dirname, '../data/posts.json');
@@ -155,6 +159,122 @@ router.post('/posts/:id/reject', (req, res) => {
   const post = posts.find(p => p.id === req.params.id);
   if (post) { post.status = 'rejected'; writeJson(POSTS_FILE, posts); }
   res.redirect('/admin?flash=Post+afgewezen');
+});
+
+// ─── GET /admin/routing – transparantie-dashboard ────────────────────────────
+
+router.get('/routing', (req, res) => {
+  const log = readJson(LOG_FILE);
+  const bridges = readJson(BRIDGES_FILE);
+
+  // Gebruik de opgeslagen cumulatieve Merkle-root uit het laatste log-item (O(1))
+  const logRoot = log.length > 0
+    ? log[log.length - 1].cumulativeMerkleRoot
+    : merkleRoot([]);
+  const totalPackets = log.length;
+  const totalHops = log.reduce((sum, e) => sum + (e.hops ? e.hops.length : 0), 0);
+
+  const bridgeRows = !bridges.length
+    ? '<tr><td colspan="5" class="empty">Nog geen bridges geïnitialiseerd. Ga naar <a href="/bridges">Routing</a>.</td></tr>'
+    : bridges.map(b => {
+        const keyFingerprint = b.publicKey ? sha256(b.publicKey) : '—';
+        return `<tr>
+          <td><strong>${escHtml(b.alias)}</strong></td>
+          <td>${escHtml(b.region)}</td>
+          <td>${b.stats ? b.stats.packetsRelayed : 0}</td>
+          <td>${b.stats ? new Date(b.stats.startedAt).toLocaleString('nl-NL') : '—'}</td>
+          <td><code class="mono">${keyFingerprint.slice(0, 24)}…</code></td>
+        </tr>`;
+      }).join('');
+
+  // Gebruik de vooraf berekende cumulatieve Merkle-root per log-item (O(n))
+  const logRows = !log.length
+    ? '<tr><td colspan="6" class="empty">Geen pakketten gerouteerd.</td></tr>'
+    : [...log].reverse().map(e => `<tr>
+        <td><code class="mono">${escHtml(e.packetId.slice(0, 10))}…</code></td>
+        <td>${escHtml((e.hops || []).join(' → '))}</td>
+        <td>${escHtml(String(e.payloadSize))} / ${escHtml(String(e.encryptedSize || '—'))} bytes</td>
+        <td>${new Date(e.timestamp).toLocaleString('nl-NL')}</td>
+        <td><code class="mono">${escHtml(e.packetHash ? e.packetHash.slice(0, 16) : '—')}…</code></td>
+        <td><code class="mono">${escHtml(e.cumulativeMerkleRoot ? e.cumulativeMerkleRoot.slice(0, 16) : '—')}…</code></td>
+      </tr>`).join('');
+
+  res.send(layout('Admin – Routing Dashboard', `
+    <div class="page-header">
+      <h1>📊 Routing Transparantie-dashboard</h1>
+      <a href="/bridges" class="btn btn-secondary">← Naar relay-bruggen</a>
+    </div>
+
+    <div class="routing-stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">${totalPackets}</div>
+        <div class="stat-label">Pakketten gerouteerd</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${bridges.length}</div>
+        <div class="stat-label">Actieve relay-nodes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${totalHops}</div>
+        <div class="stat-label">Totale relay-hops</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${totalPackets > 0 ? (totalHops / totalPackets).toFixed(1) : '0'}</div>
+        <div class="stat-label">Gemiddelde hops/pakket</div>
+      </div>
+    </div>
+
+    <section class="admin-section">
+      <h2>🔐 Merkle-boom verificatie</h2>
+      <div class="merkle-verify-box">
+        <p>De Merkle-root van het volledige routing-log garandeert dat geen enkel log-item achteraf is gewijzigd.</p>
+        <div class="merkle-root-display">
+          <span class="merkle-label">Huidige Merkle-root (${totalPackets} pakketten):</span>
+          <code class="mono merkle-root-value">${escHtml(logRoot)}</code>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-section">
+      <h2>🌐 Relay-node status <span class="count-badge">${bridges.length}</span></h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Alias</th>
+              <th>Regio</th>
+              <th>Pakketten gerouteerd</th>
+              <th>Actief sinds</th>
+              <th>Publieke-sleutel vingerafdruk (SHA-256)</th>
+            </tr>
+          </thead>
+          <tbody>${bridgeRows}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-section">
+      <h2>📋 Volledig routing-log <span class="count-badge">${totalPackets}</span></h2>
+      <p style="color:var(--muted);font-size:.88rem;margin-bottom:.75rem">
+        Payload-inhoud wordt nooit gelogd – alleen anonieme metadata en cryptografische bewijzen.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Pakket-ID</th>
+              <th>Route (alias)</th>
+              <th>Payload / versleuteld (bytes)</th>
+              <th>Tijdstip</th>
+              <th>Pakket-hash</th>
+              <th>Cumulatieve Merkle-root</th>
+            </tr>
+          </thead>
+          <tbody>${logRows}</tbody>
+        </table>
+      </div>
+    </section>
+  `));
 });
 
 module.exports = router;
