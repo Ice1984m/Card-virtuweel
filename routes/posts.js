@@ -278,8 +278,7 @@ function buildPaymentBlock(post) {
               // Log tag serial number for demo transparency
               console.info('NFC tag gelezen, serialNumber:', event.serialNumber);
               success.style.display = 'block';
-              ndef.onreading = null;
-            });
+            }, { once: true });
 
             ndef.addEventListener('readingerror', function () {
               scanning.style.display = 'none';
