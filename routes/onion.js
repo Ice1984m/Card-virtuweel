@@ -19,6 +19,9 @@ const HKDF_INFO = 'card-virtuweel-onion-v1';
 // Vaste lege bladwaarde voor Merkle-boom (expliciete constante i.p.v. magische string)
 const EMPTY_MERKLE_LEAF = 'empty';
 
+// Scheidingsteken tussen Merkle-knopen om hash-botsingen door aaneenschakeling te voorkomen
+const MERKLE_SEPARATOR = '|';
+
 // ─── Sleutelbeheer ───────────────────────────────────────────────────────────
 
 /**
@@ -159,18 +162,18 @@ function sha256(data) {
  */
 function merkleRoot(leaves) {
   if (!leaves || leaves.length === 0) return sha256(EMPTY_MERKLE_LEAF);
-  let hashes = leaves.map(l => sha256(String(l)));
+  let hashes = leaves.map(l => sha256(l)); // invoer is altijd string
   while (hashes.length > 1) {
     const next = [];
     for (let i = 0; i < hashes.length; i += 2) {
       const left = hashes[i];
       const right = i + 1 < hashes.length ? hashes[i + 1] : hashes[i];
       // Gebruik een scheidingsteken '|' om hash-botsingen door aaneenschakeling te voorkomen
-      next.push(sha256(left + '|' + right));
+      next.push(sha256(left + MERKLE_SEPARATOR + right));
     }
     hashes = next;
   }
   return hashes[0];
 }
 
-module.exports = { generateKeypair, encryptLayer, decryptLayer, buildOnionPacket, sha256, merkleRoot };
+module.exports = { generateKeypair, encryptLayer, decryptLayer, buildOnionPacket, sha256, merkleRoot, MERKLE_SEPARATOR };

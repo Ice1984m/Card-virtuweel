@@ -4,9 +4,8 @@
  * Multi-hop Privacy Relay – Bridge Registry & Dispatch Router
  *
  * Routes:
- *   GET  /bridges              – publiek overzichtsdashboard + testformulier
- *   POST /bridges/dispatch     – verzend pakket via onion relay-keten
- *   GET  /bridges/result/:id  – toon resultaat van dispatch (PRG-patroon)
+ *   GET  /bridges              – publiek overzichtsdashboard + testformulier (incl. dispatch-resultaat)
+ *   POST /bridges/dispatch     – verzend pakket via onion relay-keten → redirect naar GET /bridges?dispatched=1
  *   GET  /bridges/events       – Server-Sent Events (SSE) live relay-stream
  */
 
@@ -15,7 +14,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { layout } = require('./layout');
 const { readJson, writeJson, escHtml } = require('./helpers');
-const { generateKeypair, buildOnionPacket, decryptLayer, sha256, merkleRoot } = require('./onion');
+const { generateKeypair, buildOnionPacket, decryptLayer, sha256, merkleRoot, MERKLE_SEPARATOR } = require('./onion');
 
 const router = express.Router();
 
@@ -35,15 +34,8 @@ const MIN_HOPS = 1;
 const MAX_HOPS = 5;
 const DEFAULT_HOPS = 3;
 
-// UUID v4 validatiepatroon voor result-ID lookup
-const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 // SSE-clientverbindingen
 const sseClients = new Set();
-
-// Tijdelijke opslag voor dispatch-resultaten (PRG-patroon, max 5 min TTL)
-const dispatchResults = new Map();
-const RESULT_TTL_MS = 5 * 60 * 1000;
 
 // ─── Bridge-initialisatie ──────────────────────────────────────────────────────
 
@@ -93,7 +85,12 @@ function fisherYatesShuffle(arr) {
 }
 
 function selectHops(n) {
-  return fisherYatesShuffle(bridges).slice(0, n);
+  const hops = fisherYatesShuffle(bridges).slice(0, n);
+  // Valideer dat alle geselecteerde nodes een geldige publieke sleutel hebben
+  if (hops.some(b => !b.publicKey)) {
+    throw new Error('Geselecteerde relay-node mist een publieke sleutel');
+  }
+  return hops;
 }
 
 function broadcastSse(event, data) {
@@ -116,6 +113,46 @@ router.get('/', (req, res) => {
     ? log[log.length - 1].cumulativeMerkleRoot
     : merkleRoot([]);
   const recentLog = log.slice(-10).reverse();
+
+  // Succesresultaat: toon laatste log-entry als ?dispatched=1 aanwezig is
+  // Data komt uitsluitend uit het log-bestand (server-gegenereerde metadata)
+  let dispatchBanner = '';
+  if (req.query.dispatched === '1' && log.length > 0) {
+    const last = log[log.length - 1];
+    const hopChain = ['Afzender', ...last.hops, 'Ontvanger'].join(' → ');
+    const status = last.deliveredOk !== false
+      ? '<span class="badge badge-approved">✅ Correct afgeleverd</span>'
+      : '<span class="badge badge-rejected">⚠️ Afwijking</span>';
+    dispatchBanner = `
+      <div class="relay-result" style="margin-bottom:1.5rem">
+        <h2 style="color:var(--success);margin-bottom:1rem">✅ Pakket succesvol gerouteerd via ${last.hops.length} hop${last.hops.length !== 1 ? 's' : ''}</h2>
+        <div class="relay-path" style="margin-bottom:1rem">
+          <strong>Route:</strong> ${escHtml(hopChain)}
+        </div>
+        <div class="relay-details">
+          <div class="detail-item">
+            <span class="detail-label">Pakket-ID</span>
+            <code class="mono">${escHtml(last.packetId)}</code>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Payload / versleuteld</span>
+            <span>${last.payloadSize} / ${last.encryptedSize} bytes</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Aflevering</span>
+            ${status}
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Pakket-hash (SHA-256)</span>
+            <code class="mono">${escHtml(last.packetHash)}</code>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Merkle-root</span>
+            <code class="mono">${escHtml(last.cumulativeMerkleRoot)}</code>
+          </div>
+        </div>
+      </div>`;
+  }
 
   const bridgeRows = bridges.map(b => `
     <tr>
@@ -147,6 +184,7 @@ router.get('/', (req, res) => {
       <a href="/admin/routing" class="btn btn-secondary">📊 Admin-dashboard</a>
     </div>
     ${flash}
+    ${dispatchBanner}
 
     <div class="demo-notice">
       ⚠️ <strong>Demo modus</strong> – Alle ${bridges.length} relay-nodes draaien lokaal op één server.
@@ -291,14 +329,14 @@ router.post('/dispatch', (req, res) => {
   const log = readJson(LOG_FILE);
   const timestamp = new Date().toISOString();
   const prevRoot = log.length > 0 ? log[log.length - 1].cumulativeMerkleRoot : merkleRoot([]);
-  // Gebruik een scheidingsteken '|' om ambiguïteit in hash-invoer te voorkomen
-  const newRoot = merkleRoot([prevRoot, sha256(`${packetId}|${timestamp}`)]);
+  const newRoot = merkleRoot([prevRoot, sha256(`${packetId}${MERKLE_SEPARATOR}${timestamp}`)]);
   const entry = {
     packetId,
     hops: hopTrace,
     payloadSize: Buffer.byteLength(rawPayload, 'utf8'),
     encryptedSize,
     packetHash,
+    deliveredOk,
     cumulativeMerkleRoot: newRoot,
     timestamp,
   };
@@ -308,104 +346,8 @@ router.post('/dispatch', (req, res) => {
   // Stuur SSE-event naar alle verbonden clients
   broadcastSse('relay', { packetId, hops: hopTrace, timestamp });
 
-  // Sla resultaat op in geheugen en stuur door naar GET-resultaatpagina (PRG-patroon)
-  const resultId = uuidv4();
-  dispatchResults.set(resultId, {
-    packetId,
-    numHops,
-    hopTrace,
-    payloadSize: Buffer.byteLength(rawPayload, 'utf8'),
-    encryptedSize,
-    packetHash,
-    merkleRoot: newRoot,
-    deliveredOk,
-    createdAt: Date.now(),
-  });
-
-  // Automatisch verwijderen na TTL
-  setTimeout(() => dispatchResults.delete(resultId), RESULT_TTL_MS);
-
-  res.redirect(`/bridges/result/${resultId}`);
-});
-
-// ─── GET /bridges/result/:id ─────────────────────────────────────────────────
-
-router.get('/result/:id', (req, res) => {
-  // Valideer dat het ID voldoet aan UUID v4-formaat voordat we de Map opzoeken
-  if (!UUID_V4_RE.test(req.params.id)) {
-    return res.redirect('/bridges');
-  }
-  const result = dispatchResults.get(req.params.id);
-  if (!result) {
-    return res.status(404).redirect('/bridges?flash=Resultaat+niet+gevonden+of+verlopen');
-  }
-
-  const { packetId, numHops, hopTrace, payloadSize, encryptedSize, packetHash, merkleRoot: root, deliveredOk } = result;
-
-  const hopHtml = [
-    '<div class="hop hop-origin">📤 Afzender</div>',
-    ...hopTrace.map(alias =>
-      `<div class="hop-arrow">→</div><div class="hop hop-relay">${escHtml(alias)}</div>`
-    ),
-    '<div class="hop-arrow">→</div>',
-    '<div class="hop hop-dest">📥 Ontvanger</div>',
-  ].join('');
-
-  // Alle gerenderde waarden zijn server-gegenereerd (UUID, SHA-256, config-aliassen, getallen/boolean).
-  // Geen gebruikerspayload wordt opgeslagen in of gelezen uit dispatchResults.
-  // req.params.id is gevalideerd als UUID v4 en dient alleen als lookup-sleutel.
-  // lgtm[js/reflected-xss]
-  res.send(layout('Relay geslaagd', `
-    <div class="page-header">
-      <a href="/bridges" class="btn btn-secondary">← Terug naar bruggen</a>
-    </div>
-    <div class="relay-result">
-      <h1>${deliveredOk ? '✅' : '⚠️'} Pakket ${deliveredOk ? 'succesvol' : 'met fouten'} gerouteerd via ${numHops} hop${numHops !== 1 ? 's' : ''}</h1>
-
-      <div class="relay-path">
-        <h3>🛤️ Routing-pad</h3>
-        <div class="hop-chain">${hopHtml}</div>
-        <p class="hop-info">
-          Elke node ontsleutelde slechts één laag en zag alleen de <em>volgende</em> bestemming –
-          <strong>niemand kent zowel afzender als ontvanger tegelijk.</strong>
-        </p>
-      </div>
-
-      <div class="relay-details">
-        <div class="detail-item">
-          <span class="detail-label">Pakket-ID</span>
-          <code class="mono">${escHtml(packetId)}</code>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Versleutelingslagen</span>
-          <span>${numHops}× AES-256-GCM + ephemeral ECDH P-256</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Originele payload</span>
-          <span>${payloadSize} bytes</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Versleuteld pakket</span>
-          <span>${encryptedSize} bytes</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Aflevering</span>
-          <span>${deliveredOk
-            ? '<span class="badge badge-approved">✅ Correct afgeleverd</span>'
-            : '<span class="badge badge-rejected">⚠️ Afwijking gedetecteerd</span>'
-          }</span>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Pakket-hash (SHA-256)</span>
-          <code class="mono">${escHtml(packetHash)}</code>
-        </div>
-        <div class="detail-item">
-          <span class="detail-label">Transparantie-log Merkle-root</span>
-          <code class="mono">${escHtml(root)}</code>
-        </div>
-      </div>
-    </div>
-  `));
+  // PRG-redirect naar overzichtspagina; resultaat wordt getoond vanuit log-bestand
+  res.redirect('/bridges?dispatched=1');
 });
 
 // ─── GET /bridges/events (SSE) ───────────────────────────────────────────────
