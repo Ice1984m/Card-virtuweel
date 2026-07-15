@@ -9,6 +9,7 @@ const certificatesRouter = require('./routes/certificates');
 const postsRouter = require('./routes/posts');
 const adminRouter = require('./routes/admin');
 const browserRouter = require('./routes/browser');
+const bridgesRouter = require('./routes/bridges');
 
 const app = express();
 const PORT = process.env.PORT || 4242;
@@ -22,6 +23,7 @@ app.use('/certificates', certificatesRouter);
 app.use('/posts', postsRouter);
 app.use('/admin', adminRouter);
 app.use('/browser', browserRouter);
+app.use('/bridges', bridgesRouter);
 
 app.get('/', (req, res) => {
   res.send(homePage());
@@ -73,6 +75,14 @@ function homePage() {
           <p>Zoek op internet en koop producten online.</p>
         </a>
         <a href="/browser" class="btn btn-activate">▶ Activeer</a>
+      </div>
+      <div class="card-wrapper">
+        <a href="/bridges" class="card">
+          <span class="icon">🔗</span>
+          <h2>Privacy Relay</h2>
+          <p>Multi-hop onion-routing met AES-256-GCM encryptie en Merkle-transparantie.</p>
+        </a>
+        <a href="/bridges" class="btn btn-activate">▶ Activeer</a>
       </div>
     </div>
   `);
