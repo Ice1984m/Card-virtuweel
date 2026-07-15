@@ -84,6 +84,14 @@ function homePage() {
         </a>
         <a href="/bridges" class="btn btn-activate">▶ Activeer</a>
       </div>
+      <div class="card-wrapper">
+        <a href="https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk" class="card" download>
+          <span class="icon">📲</span>
+          <h2>Download APK</h2>
+          <p>Installeer de Card-virtuweel app direct op uw Android-apparaat.</p>
+        </a>
+        <a href="https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk" class="btn btn-activate" download>⬇ Download APK</a>
+      </div>
     </div>
   `);
 }
