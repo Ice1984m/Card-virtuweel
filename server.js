@@ -68,4 +68,4 @@ function notFoundPage() {
   `);
 }
 
-module.exports = {};
+module.exports = app;

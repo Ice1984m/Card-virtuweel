@@ -5,42 +5,37 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { layout } = require('./layout');
+const { readJson, writeJson, formatPrice, escHtml } = require('./helpers');
 
 const router = express.Router();
 
 const POSTS_FILE = path.join(__dirname, '../data/posts.json');
 const CERTS_FILE = path.join(__dirname, '../data/certificates.json');
 
-function readPosts() {
-  try { return JSON.parse(fs.readFileSync(POSTS_FILE, 'utf8')); } catch { return []; }
-}
-function writePosts(items) {
-  fs.writeFileSync(POSTS_FILE, JSON.stringify(items, null, 2));
-}
-function readCerts() {
-  try { return JSON.parse(fs.readFileSync(CERTS_FILE, 'utf8')); } catch { return []; }
-}
-
-function escHtml(str) {
-  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+const STATUS_LABEL = {
+  pending_approval: 'Wacht op goedkeuring',
+  approved: 'Goedgekeurd',
+  rejected: 'Afgekeurd',
+};
+const STATUS_CLASS = {
+  pending_approval: 'badge-pending',
+  approved: 'badge-approved',
+  rejected: 'badge-rejected',
+};
 
 router.get('/', (req, res) => {
-  const posts = readPosts();
-  const statusLabel = { pending_approval: 'Wacht op goedkeuring', approved: 'Goedgekeurd', rejected: 'Afgekeurd' };
-  const statusClass = { pending_approval: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
-
+  const posts = readJson(POSTS_FILE);
   const cards = posts.length === 0
     ? '<p class="empty">Nog geen posts aangemaakt.</p>'
     : posts.map(p => `
       <div class="post-card">
         <div class="post-header">
           <h2><a href="/posts/${p.id}">${escHtml(p.title)}</a></h2>
-          <span class="badge ${statusClass[p.status] || ''}">${statusLabel[p.status] || p.status}</span>
+          <span class="badge ${STATUS_CLASS[p.status] || ''}">${STATUS_LABEL[p.status] || escHtml(p.status)}</span>
         </div>
         <p>${escHtml(p.description)}</p>
         <div class="post-meta">
-          <strong>Prijs: €${escHtml(String(p.price))}</strong>
+          <strong>Prijs: €${escHtml(formatPrice(p.price))}</strong>
           <span>Aangemaakt: ${new Date(p.createdAt).toLocaleDateString('nl-NL')}</span>
         </div>
       </div>`).join('');
@@ -55,11 +50,11 @@ router.get('/', (req, res) => {
 });
 
 router.get('/new', (req, res) => {
-  const certs = readCerts().filter(c => c.status === 'approved');
+  const certs = readJson(CERTS_FILE).filter(c => c.status === 'approved');
   const certOptions = certs.length === 0
     ? '<option value="">-- Geen goedgekeurde certificaten beschikbaar --</option>'
     : '<option value="">-- Optioneel: koppel een certificaat --</option>' +
-      certs.map(c => `<option value="${c.id}">${escHtml(c.type)} – ${escHtml(c.number)}</option>`).join('');
+      certs.map(c => `<option value="${escHtml(c.id)}">${escHtml(c.type)} – ${escHtml(c.number)}</option>`).join('');
 
   res.send(layout('Nieuwe post', `
     <div class="page-header">
@@ -97,7 +92,7 @@ router.post('/', (req, res) => {
   if (!title || !description || price === undefined || price === '') {
     return res.status(400).send(layout('Fout', '<p class="error">Alle verplichte velden invullen.</p><a href="/posts/new" class="btn">Terug</a>'));
   }
-  const posts = readPosts();
+  const posts = readJson(POSTS_FILE);
   posts.push({
     id: uuidv4(),
     title,
@@ -107,20 +102,19 @@ router.post('/', (req, res) => {
     status: 'pending_approval',
     createdAt: new Date().toISOString(),
   });
-  writePosts(posts);
+  writeJson(POSTS_FILE, posts);
   res.redirect('/posts');
 });
 
 router.get('/:id', (req, res) => {
-  const posts = readPosts();
+  const posts = readJson(POSTS_FILE);
   const post = posts.find(p => p.id === req.params.id);
-  if (!post) return res.status(404).send(layout('Niet gevonden', '<p>Post niet gevonden.</p><a href="/posts" class="btn">Terug</a>'));
+  if (!post) {
+    return res.status(404).send(layout('Niet gevonden', '<p>Post niet gevonden.</p><a href="/posts" class="btn">Terug</a>'));
+  }
 
-  const certs = readCerts();
+  const certs = readJson(CERTS_FILE);
   const cert = post.certificateId ? certs.find(c => c.id === post.certificateId) : null;
-
-  const statusLabel = { pending_approval: 'Wacht op goedkeuring', approved: 'Goedgekeurd', rejected: 'Afgekeurd' };
-  const statusClass = { pending_approval: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
 
   const certBlock = cert
     ? `<div class="info-block">
@@ -130,50 +124,11 @@ router.get('/:id', (req, res) => {
     : '';
 
   const paymentBlock = post.status === 'approved'
-    ? `<div class="payment-section">
-        <h2>Betaling</h2>
-        <form class="form-card payment-form" onsubmit="handlePayment(event)">
-          <div class="form-group">
-            <label for="cardName">Naam op kaart</label>
-            <input id="cardName" type="text" placeholder="Jan Janssen" required>
-          </div>
-          <div class="form-group">
-            <label for="cardNumber">Kaartnummer</label>
-            <input id="cardNumber" type="text" placeholder="1234 5678 9012 3456" maxlength="19" required>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="cardExpiry">Vervaldatum</label>
-              <input id="cardExpiry" type="text" placeholder="MM/JJ" maxlength="5" required>
-            </div>
-            <div class="form-group">
-              <label for="cardCvv">CVV</label>
-              <input id="cardCvv" type="text" placeholder="123" maxlength="4" required>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Bedrag</label>
-            <div class="amount-display">€${escHtml(String(post.price.toFixed(2)))}</div>
-          </div>
-          <div class="form-actions">
-            <button type="submit" class="btn btn-pay">💳 Betaal nu</button>
-          </div>
-        </form>
-        <div id="paymentSuccess" class="success-msg" style="display:none">
-          ✅ Betaling succesvol verwerkt! (demo modus)
-        </div>
-        <script>
-          function handlePayment(e) {
-            e.preventDefault();
-            document.querySelector('.payment-form').style.display = 'none';
-            document.getElementById('paymentSuccess').style.display = 'block';
-          }
-        </script>
-       </div>`
+    ? buildPaymentBlock(post)
     : `<div class="payment-blocked">
         <span class="lock-icon">🔒</span>
         <p>Deze post moet eerst worden <strong>goedgekeurd</strong> voordat betaling mogelijk is.</p>
-        <p class="status-msg">Huidige status: <span class="badge ${statusClass[post.status] || ''}">${statusLabel[post.status] || post.status}</span></p>
+        <p class="status-msg">Huidige status: <span class="badge ${STATUS_CLASS[post.status] || ''}">${STATUS_LABEL[post.status] || escHtml(post.status)}</span></p>
        </div>`;
 
   res.send(layout(escHtml(post.title), `
@@ -183,14 +138,173 @@ router.get('/:id', (req, res) => {
     <div class="post-detail">
       <div class="post-detail-header">
         <h1>${escHtml(post.title)}</h1>
-        <span class="badge ${statusClass[post.status] || ''}">${statusLabel[post.status] || post.status}</span>
+        <span class="badge ${STATUS_CLASS[post.status] || ''}">${STATUS_LABEL[post.status] || escHtml(post.status)}</span>
       </div>
       <p class="post-description">${escHtml(post.description)}</p>
-      <p class="post-price"><strong>Prijs: €${escHtml(String(post.price.toFixed(2)))}</strong></p>
+      <p class="post-price"><strong>Prijs: €${escHtml(formatPrice(post.price))}</strong></p>
       ${certBlock}
       ${paymentBlock}
     </div>
   `));
 });
 
+function buildPaymentBlock(post) {
+  const price = escHtml(formatPrice(post.price));
+  return `
+    <div class="payment-section">
+      <h2>Betaling</h2>
+
+      <div class="payment-tabs" role="tablist">
+        <button class="tab-btn tab-active" role="tab" data-tab="nfc">📲 NFC Betalen</button>
+        <button class="tab-btn" role="tab" data-tab="card">💳 Kaartbetaling</button>
+      </div>
+
+      <!-- NFC tab -->
+      <div id="tab-nfc" class="tab-panel">
+        <div class="nfc-panel">
+          <div id="nfcUnsupported" class="nfc-unsupported" style="display:none">
+            <p>⚠️ Web NFC wordt niet ondersteund door deze browser.</p>
+            <p>Gebruik <strong>Chrome op Android</strong> om via NFC te betalen, of kies kaartbetaling.</p>
+          </div>
+          <div id="nfcReady">
+            <p class="nfc-instructions">Houd uw NFC-betaalkaart of -apparaat tegen de achterkant van uw telefoon.</p>
+            <div class="nfc-animation" id="nfcAnimation">
+              <div class="nfc-ring ring1"></div>
+              <div class="nfc-ring ring2"></div>
+              <div class="nfc-ring ring3"></div>
+              <span class="nfc-icon">📡</span>
+            </div>
+            <div class="amount-display">€${price}</div>
+            <button id="btnStartNfc" class="btn btn-nfc" onclick="startNfcPayment('${price}')">
+              📲 Start NFC-betaling
+            </button>
+            <div id="nfcScanning" class="nfc-scanning" style="display:none">
+              <p>🔍 Scannen… houd uw kaart tegen de telefoon</p>
+            </div>
+            <div id="nfcSuccess" class="success-msg" style="display:none">
+              ✅ NFC-betaling succesvol! Bedrag: €${price}
+            </div>
+            <div id="nfcError" class="error" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card tab -->
+      <div id="tab-card" class="tab-panel" style="display:none">
+        <form class="form-card payment-form" id="cardForm" onsubmit="handleCardPayment(event)">
+          <div class="form-group">
+            <label for="cardName">Naam op kaart</label>
+            <input id="cardName" type="text" placeholder="Jan Janssen" autocomplete="cc-name" required>
+          </div>
+          <div class="form-group">
+            <label for="cardNumber">Kaartnummer</label>
+            <input id="cardNumber" type="text" placeholder="1234 5678 9012 3456" maxlength="19"
+                   autocomplete="cc-number" inputmode="numeric" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cardExpiry">Vervaldatum</label>
+              <input id="cardExpiry" type="text" placeholder="MM/JJ" maxlength="5"
+                     autocomplete="cc-exp" required>
+            </div>
+            <div class="form-group">
+              <label for="cardCvv">CVV</label>
+              <input id="cardCvv" type="text" placeholder="123" maxlength="4"
+                     autocomplete="cc-csc" inputmode="numeric" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Bedrag</label>
+            <div class="amount-display">€${price}</div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-pay">💳 Betaal nu</button>
+          </div>
+        </form>
+        <div id="cardSuccess" class="success-msg" style="display:none">
+          ✅ Kaartbetaling succesvol verwerkt! (demo modus)
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Tab switching
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
+          document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+          btn.classList.add('tab-active');
+          document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
+        });
+      });
+
+      // Check NFC support on load
+      if (!('NDEFReader' in window)) {
+        document.getElementById('nfcUnsupported').style.display = 'block';
+        document.getElementById('nfcReady').style.display = 'none';
+      }
+
+      async function startNfcPayment(amount) {
+        const btn = document.getElementById('btnStartNfc');
+        const scanning = document.getElementById('nfcScanning');
+        const success = document.getElementById('nfcSuccess');
+        const errEl = document.getElementById('nfcError');
+        const anim = document.getElementById('nfcAnimation');
+
+        errEl.style.display = 'none';
+        success.style.display = 'none';
+
+        if (!('NDEFReader' in window)) {
+          errEl.textContent = 'NFC wordt niet ondersteund door deze browser.';
+          errEl.style.display = 'block';
+          return;
+        }
+
+        try {
+          btn.disabled = true;
+          scanning.style.display = 'block';
+          anim.classList.add('nfc-active');
+
+          const ndef = new NDEFReader();
+          await ndef.scan();
+
+          ndef.onreading = (event) => {
+            scanning.style.display = 'none';
+            anim.classList.remove('nfc-active');
+            btn.style.display = 'none';
+            success.style.display = 'block';
+            ndef.onreading = null;
+          };
+
+          ndef.onreadingerror = () => {
+            scanning.style.display = 'none';
+            anim.classList.remove('nfc-active');
+            btn.disabled = false;
+            errEl.textContent = 'NFC-tag kon niet worden gelezen. Probeer opnieuw.';
+            errEl.style.display = 'block';
+          };
+        } catch (err) {
+          scanning.style.display = 'none';
+          anim.classList.remove('nfc-active');
+          btn.disabled = false;
+          if (err.name === 'NotAllowedError') {
+            errEl.textContent = 'NFC-toegang geweigerd. Sta NFC-toegang toe in uw browser.';
+          } else if (err.name === 'NotSupportedError') {
+            errEl.textContent = 'NFC wordt niet ondersteund op dit apparaat.';
+          } else {
+            errEl.textContent = 'NFC-fout: ' + err.message;
+          }
+          errEl.style.display = 'block';
+        }
+      }
+
+      function handleCardPayment(e) {
+        e.preventDefault();
+        document.getElementById('cardForm').style.display = 'none';
+        document.getElementById('cardSuccess').style.display = 'block';
+      }
+    </script>`;
+}
+
 module.exports = router;
+

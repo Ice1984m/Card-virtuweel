@@ -361,3 +361,105 @@ footer {
   .page-header { flex-direction: column; align-items: flex-start; }
   .post-meta { flex-direction: column; gap: .25rem; }
 }
+
+/* ─── Payment tabs ─── */
+.payment-tabs {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: .5rem;
+}
+.tab-btn {
+  background: none;
+  border: 2px solid var(--border);
+  border-radius: 8px 8px 0 0;
+  padding: .55rem 1.2rem;
+  cursor: pointer;
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--muted);
+  transition: all .15s;
+}
+.tab-btn:hover { border-color: var(--primary); color: var(--primary); }
+.tab-btn.tab-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* ─── NFC panel ─── */
+.nfc-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+  max-width: 420px;
+}
+.nfc-instructions {
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+  font-size: .95rem;
+}
+.nfc-animation {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nfc-icon {
+  font-size: 2.8rem;
+  position: relative;
+  z-index: 2;
+}
+.nfc-ring {
+  position: absolute;
+  border: 3px solid var(--primary);
+  border-radius: 50%;
+  opacity: 0;
+}
+.ring1 { width: 60px; height: 60px; }
+.ring2 { width: 90px; height: 90px; }
+.ring3 { width: 120px; height: 120px; }
+
+.nfc-active .ring1 { animation: nfc-pulse 1.8s ease-out infinite; }
+.nfc-active .ring2 { animation: nfc-pulse 1.8s ease-out .4s infinite; }
+.nfc-active .ring3 { animation: nfc-pulse 1.8s ease-out .8s infinite; }
+
+@keyframes nfc-pulse {
+  0%   { opacity: .8; transform: scale(.5); }
+  100% { opacity: 0;  transform: scale(1); }
+}
+
+.btn-nfc {
+  background: #7c3aed;
+  font-size: 1rem;
+  padding: .7rem 2rem;
+  margin-top: .5rem;
+}
+.btn-nfc:hover { background: #6d28d9; }
+.btn-nfc:disabled { background: #a78bfa; cursor: not-allowed; }
+
+.nfc-scanning {
+  margin-top: 1rem;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: .95rem;
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.nfc-unsupported {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  color: #7c2d12;
+  font-size: .9rem;
+}
+.nfc-unsupported p { margin-bottom: .4rem; }

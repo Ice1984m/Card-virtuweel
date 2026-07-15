@@ -1,35 +1,18 @@
 'use strict';
 
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
 const { layout } = require('./layout');
+const { readJson, writeJson, formatPrice, escHtml } = require('./helpers');
 
 const router = express.Router();
 
 const CERTS_FILE = path.join(__dirname, '../data/certificates.json');
 const POSTS_FILE = path.join(__dirname, '../data/posts.json');
 
-function readCerts() {
-  try { return JSON.parse(fs.readFileSync(CERTS_FILE, 'utf8')); } catch { return []; }
-}
-function writeCerts(items) {
-  fs.writeFileSync(CERTS_FILE, JSON.stringify(items, null, 2));
-}
-function readPosts() {
-  try { return JSON.parse(fs.readFileSync(POSTS_FILE, 'utf8')); } catch { return []; }
-}
-function writePosts(items) {
-  fs.writeFileSync(POSTS_FILE, JSON.stringify(items, null, 2));
-}
-
-function escHtml(str) {
-  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
 router.get('/', (req, res) => {
-  const certs = readCerts();
-  const posts = readPosts();
+  const certs = readJson(CERTS_FILE);
+  const posts = readJson(POSTS_FILE);
 
   const pendingCerts = certs.filter(c => c.status === 'pending');
   const pendingPosts = posts.filter(p => p.status === 'pending_approval');
@@ -43,10 +26,10 @@ router.get('/', (req, res) => {
         <td>${escHtml(c.issuer)}</td>
         <td>${escHtml(c.expiry)}</td>
         <td class="action-cell">
-          <form method="POST" action="/admin/certificates/${c.id}/approve" style="display:inline">
+          <form method="POST" action="/admin/certificates/${escHtml(c.id)}/approve" style="display:inline">
             <button class="btn btn-small btn-approve">✔ Goedkeuren</button>
           </form>
-          <form method="POST" action="/admin/certificates/${c.id}/reject" style="display:inline">
+          <form method="POST" action="/admin/certificates/${escHtml(c.id)}/reject" style="display:inline">
             <button class="btn btn-small btn-reject">✖ Afwijzen</button>
           </form>
         </td>
@@ -56,14 +39,14 @@ router.get('/', (req, res) => {
     ? '<tr><td colspan="4" class="empty">Geen posts in behandeling.</td></tr>'
     : pendingPosts.map(p => `
       <tr>
-        <td><a href="/posts/${p.id}">${escHtml(p.title)}</a></td>
+        <td><a href="/posts/${escHtml(p.id)}">${escHtml(p.title)}</a></td>
         <td>${escHtml(p.description).slice(0, 80)}${p.description.length > 80 ? '…' : ''}</td>
-        <td>€${escHtml(String(p.price.toFixed(2)))}</td>
+        <td>€${escHtml(formatPrice(p.price))}</td>
         <td class="action-cell">
-          <form method="POST" action="/admin/posts/${p.id}/approve" style="display:inline">
+          <form method="POST" action="/admin/posts/${escHtml(p.id)}/approve" style="display:inline">
             <button class="btn btn-small btn-approve">✔ Goedkeuren</button>
           </form>
-          <form method="POST" action="/admin/posts/${p.id}/reject" style="display:inline">
+          <form method="POST" action="/admin/posts/${escHtml(p.id)}/reject" style="display:inline">
             <button class="btn btn-small btn-reject">✖ Afwijzen</button>
           </form>
         </td>
@@ -111,9 +94,12 @@ router.get('/', (req, res) => {
   `));
 });
 
+const CERT_STATUS_LABEL = { pending: 'In behandeling', approved: 'Goedgekeurd', rejected: 'Afgekeurd' };
+const CERT_STATUS_CLASS = { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
+const POST_STATUS_LABEL = { pending_approval: 'Wacht op goedkeuring', approved: 'Goedgekeurd', rejected: 'Afgekeurd' };
+const POST_STATUS_CLASS = { pending_approval: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
+
 function allCertsTable(certs) {
-  const statusLabel = { pending: 'In behandeling', approved: 'Goedgekeurd', rejected: 'Afgekeurd' };
-  const statusClass = { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
   if (!certs.length) return '<p class="empty">Geen certificaten.</p>';
   return `<div class="table-wrap"><table>
     <thead><tr><th>Type</th><th>Nummer</th><th>Instantie</th><th>Vervaldatum</th><th>Status</th></tr></thead>
@@ -123,53 +109,51 @@ function allCertsTable(certs) {
         <td>${escHtml(c.number)}</td>
         <td>${escHtml(c.issuer)}</td>
         <td>${escHtml(c.expiry)}</td>
-        <td><span class="badge ${statusClass[c.status] || ''}">${statusLabel[c.status] || c.status}</span></td>
+        <td><span class="badge ${CERT_STATUS_CLASS[c.status] || ''}">${CERT_STATUS_LABEL[c.status] || escHtml(c.status)}</span></td>
       </tr>`).join('')}
     </tbody>
   </table></div>`;
 }
 
 function allPostsTable(posts) {
-  const statusLabel = { pending_approval: 'Wacht op goedkeuring', approved: 'Goedgekeurd', rejected: 'Afgekeurd' };
-  const statusClass = { pending_approval: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
   if (!posts.length) return '<p class="empty">Geen posts.</p>';
   return `<div class="table-wrap"><table>
     <thead><tr><th>Titel</th><th>Prijs</th><th>Status</th></tr></thead>
     <tbody>
       ${posts.map(p => `<tr>
-        <td><a href="/posts/${p.id}">${escHtml(p.title)}</a></td>
-        <td>€${escHtml(String(p.price.toFixed(2)))}</td>
-        <td><span class="badge ${statusClass[p.status] || ''}">${statusLabel[p.status] || p.status}</span></td>
+        <td><a href="/posts/${escHtml(p.id)}">${escHtml(p.title)}</a></td>
+        <td>€${escHtml(formatPrice(p.price))}</td>
+        <td><span class="badge ${POST_STATUS_CLASS[p.status] || ''}">${POST_STATUS_LABEL[p.status] || escHtml(p.status)}</span></td>
       </tr>`).join('')}
     </tbody>
   </table></div>`;
 }
 
 router.post('/certificates/:id/approve', (req, res) => {
-  const certs = readCerts();
+  const certs = readJson(CERTS_FILE);
   const cert = certs.find(c => c.id === req.params.id);
-  if (cert) { cert.status = 'approved'; writeCerts(certs); }
+  if (cert) { cert.status = 'approved'; writeJson(CERTS_FILE, certs); }
   res.redirect('/admin?flash=Certificaat+goedgekeurd');
 });
 
 router.post('/certificates/:id/reject', (req, res) => {
-  const certs = readCerts();
+  const certs = readJson(CERTS_FILE);
   const cert = certs.find(c => c.id === req.params.id);
-  if (cert) { cert.status = 'rejected'; writeCerts(certs); }
+  if (cert) { cert.status = 'rejected'; writeJson(CERTS_FILE, certs); }
   res.redirect('/admin?flash=Certificaat+afgewezen');
 });
 
 router.post('/posts/:id/approve', (req, res) => {
-  const posts = readPosts();
+  const posts = readJson(POSTS_FILE);
   const post = posts.find(p => p.id === req.params.id);
-  if (post) { post.status = 'approved'; writePosts(posts); }
+  if (post) { post.status = 'approved'; writeJson(POSTS_FILE, posts); }
   res.redirect('/admin?flash=Post+goedgekeurd');
 });
 
 router.post('/posts/:id/reject', (req, res) => {
-  const posts = readPosts();
+  const posts = readJson(POSTS_FILE);
   const post = posts.find(p => p.id === req.params.id);
-  if (post) { post.status = 'rejected'; writePosts(posts); }
+  if (post) { post.status = 'rejected'; writeJson(POSTS_FILE, posts); }
   res.redirect('/admin?flash=Post+afgewezen');
 });
 

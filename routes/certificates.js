@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { layout } = require('./layout');
+const { readJson, writeJson, escHtml } = require('./helpers');
 
 const router = express.Router();
 
@@ -34,17 +35,11 @@ const upload = multer({
   },
 });
 
-function readCerts() {
-  try { return JSON.parse(fs.readFileSync(CERT_FILE, 'utf8')); } catch { return []; }
-}
-function writeCerts(items) {
-  fs.writeFileSync(CERT_FILE, JSON.stringify(items, null, 2));
-}
+const STATUS_LABEL = { pending: 'In behandeling', approved: 'Goedgekeurd', rejected: 'Afgekeurd' };
+const STATUS_CLASS = { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
 
 router.get('/', (req, res) => {
-  const certs = readCerts();
-  const statusLabel = { pending: 'In behandeling', approved: 'Goedgekeurd', rejected: 'Afgekeurd' };
-  const statusClass = { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
+  const certs = readJson(CERT_FILE);
   const rows = certs.length === 0
     ? '<tr><td colspan="6" class="empty">Geen certificaten gevonden.</td></tr>'
     : certs.map(c => `
@@ -53,8 +48,8 @@ router.get('/', (req, res) => {
         <td>${escHtml(c.number)}</td>
         <td>${escHtml(c.issuer)}</td>
         <td>${escHtml(c.expiry)}</td>
-        <td><span class="badge ${statusClass[c.status] || ''}">${statusLabel[c.status] || c.status}</span></td>
-        <td>${c.filename ? `<a href="/uploads/certificates/${c.filename}" target="_blank">Bekijk</a>` : '–'}</td>
+        <td><span class="badge ${STATUS_CLASS[c.status] || ''}">${STATUS_LABEL[c.status] || escHtml(c.status)}</span></td>
+        <td>${c.filename ? `<a href="/uploads/certificates/${escHtml(c.filename)}" target="_blank">Bekijk</a>` : '–'}</td>
       </tr>`).join('');
 
   res.send(layout('Certificaten &amp; Licenties', `
@@ -123,7 +118,7 @@ router.post('/', upload.single('file'), (req, res) => {
   if (!type || !number || !issuer || !expiry) {
     return res.status(400).send(layout('Fout', '<p class="error">Alle velden zijn verplicht.</p><a href="/certificates/new" class="btn">Terug</a>'));
   }
-  const certs = readCerts();
+  const certs = readJson(CERT_FILE);
   certs.push({
     id: uuidv4(),
     type,
@@ -135,12 +130,19 @@ router.post('/', upload.single('file'), (req, res) => {
     status: 'pending',
     createdAt: new Date().toISOString(),
   });
-  writeCerts(certs);
+  writeJson(CERT_FILE, certs);
   res.redirect('/certificates');
 });
 
-function escHtml(str) {
-  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+router.use((err, req, res, next) => {
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).send(layout('Fout', '<p class="error">Bestand is te groot (max 5 MB).</p><a href="/certificates/new" class="btn">Terug</a>'));
+  }
+  if (err.message) {
+    return res.status(400).send(layout('Fout', `<p class="error">${escHtml(err.message)}</p><a href="/certificates/new" class="btn">Terug</a>`));
+  }
+  next(err);
+});
 
 module.exports = router;
+
