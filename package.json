@@ -1,0 +1,27 @@
+{
+  "name": "card-virtuweel",
+  "version": "1.0.0",
+  "description": "Card-virtuweel platform met certificaten, licenties en post-goedkeuring",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ice1984m/Card-virtuweel.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ice1984m/Card-virtuweel/issues"
+  },
+  "homepage": "https://github.com/Ice1984m/Card-virtuweel#readme",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "multer": "^2.2.0",
+    "uuid": "^14.0.1"
+  }
+}
