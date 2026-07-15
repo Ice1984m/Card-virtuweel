@@ -192,6 +192,22 @@ function buildPaymentBlock(post) {
 
       <!-- Card tab -->
       <div id="tab-card" class="tab-panel" style="display:none">
+
+        <!-- One-click payment (shown when card is saved) -->
+        <div id="oneClickSection" style="display:none">
+          <div class="demo-notice">💾 Opgeslagen kaart gevonden – betaal direct</div>
+          <div class="amount-display">€${price}</div>
+          <button type="button" class="btn btn-pay" id="btnOneClick">⚡ Betaal met één klik – €${price}</button>
+          <div id="oneClickSuccess" class="success-msg" style="display:none">
+            ✅ Betaling verwerkt! Bedrag: €${price} (demo modus)
+          </div>
+          <p style="margin-top:.75rem">
+            <button type="button" class="btn btn-secondary btn-small" id="btnRemoveSaved">🗑 Opgeslagen kaart verwijderen</button>
+          </p>
+          <hr style="margin:1.25rem 0; border:none; border-top:1px solid var(--border)">
+          <p style="font-size:.88rem; color:var(--muted)">Of vul een andere kaart in:</p>
+        </div>
+
         <form class="form-card payment-form" id="cardForm">
           <div class="form-group">
             <label for="cardName">Naam op kaart</label>
@@ -217,6 +233,12 @@ function buildPaymentBlock(post) {
           <div class="form-group">
             <label>Bedrag</label>
             <div class="amount-display">€${price}</div>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+              <input type="checkbox" id="saveCard" style="width:auto">
+              Kaartgegevens opslaan voor één-klik betaling
+            </label>
           </div>
           <div class="form-actions">
             <button type="submit" class="btn btn-pay">💳 Betaal nu</button>
@@ -302,9 +324,53 @@ function buildPaymentBlock(post) {
           }
         });
 
+        // One-click payment: load saved card
+        var savedCard = null;
+        try { savedCard = JSON.parse(localStorage.getItem('cardvirtuweel_saved_card')); } catch (e) {}
+        if (savedCard && savedCard.masked) {
+          document.getElementById('oneClickSection').style.display = 'block';
+          document.getElementById('btnOneClick').textContent =
+            '⚡ Betaal met één klik – ' + savedCard.masked + ' – €${price}';
+        }
+
+        document.getElementById('btnOneClick').addEventListener('click', function () {
+          this.style.display = 'none';
+          document.getElementById('oneClickSuccess').style.display = 'block';
+        });
+
+        document.getElementById('btnRemoveSaved').addEventListener('click', function () {
+          localStorage.removeItem('cardvirtuweel_saved_card');
+          document.getElementById('oneClickSection').style.display = 'none';
+        });
+
+        // Format card number with spaces
+        document.getElementById('cardNumber').addEventListener('input', function () {
+          var v = this.value.replace(/\\D/g, '').slice(0, 16);
+          this.value = v.replace(/(\\d{4})(?=\\d)/g, '$1 ');
+        });
+
+        // Format expiry MM/JJ
+        document.getElementById('cardExpiry').addEventListener('input', function () {
+          var v = this.value.replace(/\\D/g, '').slice(0, 4);
+          if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2);
+          this.value = v;
+        });
+
         // Card payment
         document.getElementById('cardForm').addEventListener('submit', function (e) {
           e.preventDefault();
+          // Save card if checkbox checked (only masked number stored, no CVV)
+          if (document.getElementById('saveCard').checked) {
+            var raw = document.getElementById('cardNumber').value.replace(/\\s/g, '');
+            var masked = '**** **** **** ' + raw.slice(-4);
+            try {
+              localStorage.setItem('cardvirtuweel_saved_card', JSON.stringify({
+                masked: masked,
+                name: document.getElementById('cardName').value,
+                expiry: document.getElementById('cardExpiry').value,
+              }));
+            } catch (e) {}
+          }
           document.getElementById('cardForm').style.display = 'none';
           document.getElementById('cardSuccess').style.display = 'block';
         });

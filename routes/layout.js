@@ -22,6 +22,7 @@ function layout(title, content) {
     <div class="nav-links">
       <a href="/certificates">Certificaten</a>
       <a href="/posts">Posts</a>
+      <a href="/browser">Browser</a>
       <a href="/admin">Admin</a>
     </div>
   </nav>
