@@ -33,7 +33,7 @@ test('top-up confirm updates balance and readiness output', () => {
 });
 
 test('purchase fails when balance is insufficient', () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'card-virtuweel-payments-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'card-virtueel-payments-'));
   const paymentFile = path.join(tempDir, 'payments.json');
   const service = loadService(paymentFile);
 
@@ -53,7 +53,7 @@ test('purchase fails when balance is insufficient', () => {
 });
 
 test('approval report exposes sandbox-dev render approval data', () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'card-virtuweel-payments-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'card-virtueel-payments-'));
   const paymentFile = path.join(tempDir, 'payments.json');
   const service = loadService(paymentFile);
 
@@ -66,7 +66,7 @@ test('approval report exposes sandbox-dev render approval data', () => {
 });
 
 test('invoice generation and payment marks invoice as paid', () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'card-virtuweel-payments-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'card-virtueel-payments-'));
   const paymentFile = path.join(tempDir, 'payments.json');
   const service = loadService(paymentFile);
 

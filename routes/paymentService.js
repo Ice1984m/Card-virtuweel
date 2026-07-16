@@ -210,10 +210,12 @@ function createInvoice(input) {
     dueDate = parsedDueDate.toISOString();
   }
 
+  const timestampPart = Date.now().toString(36).toUpperCase();
   const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const randomPart = randomInt(100000, 1000000);
   const invoice = {
     id: randomUUID(),
-    number: `INV-${datePart}-${randomInt(1000, 10000)}`,
+    number: `INV-${datePart}-${timestampPart}-${randomPart}`,
     description,
     amount,
     currency: 'EUR',
