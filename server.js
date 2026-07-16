@@ -13,6 +13,8 @@ const bridgesRouter = require('./routes/bridges');
 
 const app = express();
 const PORT = process.env.PORT || 4242;
+const APK_DOWNLOAD_URL = 'https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk';
+const README_URL = 'https://github.com/Ice1984m/Card-virtuweel#readme';
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -38,9 +40,6 @@ app.listen(PORT, () => {
 });
 
 function homePage() {
-  const apkDownloadUrl = 'https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk';
-  const readmeUrl = 'https://github.com/Ice1984m/Card-virtuweel#readme';
-
   return layout('Card-virtuweel – Home', `
     <div class="hero">
       <h1>Card-virtuweel</h1>
@@ -88,14 +87,14 @@ function homePage() {
         <a href="/bridges" class="btn btn-activate">▶ Activeer</a>
       </div>
       <div class="card-wrapper">
-        <a href="${apkDownloadUrl}" class="card" download>
+        <a href="${APK_DOWNLOAD_URL}" class="card" download>
           <span class="icon">📲</span>
           <h2>Download APK</h2>
           <p>Installeer de Card-virtuweel app direct op uw Android-apparaat.</p>
-          <p class="mono">APK URL: ${apkDownloadUrl}</p>
         </a>
-        <a href="${apkDownloadUrl}" class="btn btn-activate" download>⬇ Download APK</a>
-        <p class="mono">README URL: <a href="${readmeUrl}" target="_blank" rel="noopener noreferrer">${readmeUrl}</a></p>
+        <a href="${APK_DOWNLOAD_URL}" class="btn btn-activate" download>⬇ Download APK</a>
+        <p class="mono">APK URL: <a href="${APK_DOWNLOAD_URL}" target="_blank" rel="noopener noreferrer">${APK_DOWNLOAD_URL}</a></p>
+        <p class="mono">README URL: <a href="${README_URL}" target="_blank" rel="noopener noreferrer">${README_URL}</a></p>
       </div>
     </div>
   `);
