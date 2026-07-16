@@ -71,10 +71,9 @@ app.get('/download/apk', async (req, res) => {
       console.error('APK-download streamfout:', streamErr);
       if (!res.headersSent) {
         res.status(502).send('APK-download is tijdelijk niet beschikbaar.');
-        return;
+      } else {
+        res.destroy(streamErr);
       }
-
-      res.destroy(streamErr);
     });
     downloadStream.pipe(res);
   } catch (err) {
@@ -241,9 +240,17 @@ function safeExternalUrl(value) {
 }
 
 function sanitizeDownloadFilename(urlPathname) {
-  const rawName = path.basename(urlPathname) || 'Card-virtuweel.apk';
+  let decodedPathname = urlPathname;
+
+  try {
+    decodedPathname = decodeURIComponent(urlPathname);
+  } catch (err) {
+    decodedPathname = urlPathname;
+  }
+
+  const rawName = path.basename(decodedPathname) || 'Card-virtuweel.apk';
   const cleanedName = rawName.replace(/[^a-zA-Z0-9._-]/g, '');
-  return cleanedName.toLowerCase().endsWith('.apk') ? cleanedName : 'Card-virtuweel.apk';
+  return cleanedName.toLowerCase().endsWith('.apk') ? cleanedName.toLowerCase() : 'Card-virtuweel.apk';
 }
 
 const APK_DOWNLOAD_URL = safeExternalUrl(process.env.APK_DOWNLOAD_URL);
