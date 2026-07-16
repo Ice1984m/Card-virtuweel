@@ -32,9 +32,20 @@ function getPaymentFile() {
 function readPaymentState() {
   try {
     const raw = JSON.parse(fs.readFileSync(getPaymentFile(), 'utf8'));
+    const wallet = raw.wallet
+      ? {
+          ...raw.wallet,
+          availableBalance: Number.isFinite(Number(raw.wallet.availableBalance))
+            ? Number(raw.wallet.availableBalance)
+            : Number(raw.wallet.balance || 0),
+          linkedBankAccount: raw.wallet.linkedBankAccount || null,
+          maskedBankAccount: raw.wallet.maskedBankAccount || (raw.wallet.linkedBankAccount ? maskIban(raw.wallet.linkedBankAccount) : null),
+        }
+      : null;
     return {
       ...defaultState(),
       ...raw,
+      wallet,
       invoices: Array.isArray(raw.invoices) ? raw.invoices : [],
       topUpIntents: Array.isArray(raw.topUpIntents) ? raw.topUpIntents : [],
       paymentIntents: Array.isArray(raw.paymentIntents) ? raw.paymentIntents : [],
@@ -62,6 +73,26 @@ function normalizeAmount(value) {
     throw err;
   }
   return Math.round(amount * 100) / 100;
+}
+
+function maskIban(value) {
+  if (!value) {
+    return '';
+  }
+  if (value.length <= 8) {
+    return `${value.slice(0, 2)}****`;
+  }
+  return `${value.slice(0, 4)} **** **** ${value.slice(-4)}`;
+}
+
+function normalizeIban(value) {
+  const iban = String(value || '').replace(/\s+/g, '').toUpperCase();
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban)) {
+    const err = new Error('Voer een geldig IBAN-rekeningnummer in.');
+    err.statusCode = 400;
+    throw err;
+  }
+  return iban;
 }
 
 function requireWallet(state) {
@@ -131,12 +162,32 @@ function createSandboxWallet(holderName) {
     status: 'sandbox_active',
     currency: 'EUR',
     balance: 0,
+    availableBalance: 0,
+    linkedBankAccount: null,
+    maskedBankAccount: null,
     issuedAt: new Date().toISOString(),
   };
 
   addAudit(state, 'wallet.requested', 'Sandbox prepaid kaart aangemaakt.', {
     provider: state.wallet.provider,
     maskedPan: state.wallet.maskedPan,
+  });
+  writePaymentState(state);
+  return state.wallet;
+}
+
+function setWalletBankAccount(ibanInput) {
+  const state = readPaymentState();
+  requireWallet(state);
+  assertRateLimit(state, 'wallet.bank_account.updated');
+
+  const iban = normalizeIban(ibanInput);
+  state.wallet.linkedBankAccount = iban;
+  state.wallet.maskedBankAccount = maskIban(iban);
+  state.wallet.updatedAt = new Date().toISOString();
+  addAudit(state, 'wallet.bank_account.updated', `IBAN gekoppeld aan wallet (${state.wallet.maskedBankAccount}).`, {
+    walletId: state.wallet.id,
+    maskedBankAccount: state.wallet.maskedBankAccount,
   });
   writePaymentState(state);
   return state.wallet;
@@ -410,6 +461,7 @@ function processWebhookEvent(event) {
   if (safeEvent.outcome === 'approved') {
     if (intent.type === 'topup') {
       state.wallet.balance = Math.round((Number(state.wallet.balance || 0) + intent.amount) * 100) / 100;
+      state.wallet.availableBalance = state.wallet.balance;
       state.wallet.lastTopUpAt = new Date().toISOString();
       markIntentTerminal(intent, 'confirmed');
       pushTransaction(state, {
@@ -435,6 +487,7 @@ function processWebhookEvent(event) {
         });
       } else {
         state.wallet.balance = Math.round((Number(state.wallet.balance || 0) - intent.amount) * 100) / 100;
+        state.wallet.availableBalance = state.wallet.balance;
         markIntentTerminal(intent, 'confirmed');
         if (intent.invoiceId) {
           const invoice = getInvoiceById(intent.invoiceId, state);
@@ -580,6 +633,7 @@ module.exports = {
   DAILY_TOP_UP_LIMIT,
   readPaymentState,
   createSandboxWallet,
+  setWalletBankAccount,
   createInvoice,
   createTopUpIntent,
   createPurchaseIntent,
