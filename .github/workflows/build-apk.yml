@@ -2,6 +2,8 @@ name: Build APK
 
 on:
   push:
+    branches:
+      - main
     tags:
       - '*'
   workflow_dispatch:
@@ -60,6 +62,24 @@ jobs:
           files: Card-virtuweel.apk
           body: |
             ## Card-virtuweel ${{ github.ref_name }}
+
+            ### Installeren
+            1. Download `Card-virtuweel.apk`
+            2. Zet "Installatie van onbekende bronnen" aan in Android-instellingen
+            3. Open het APK-bestand en kies **Installeren**
+
+            > Dit is een debug-build. De app opent de Card-virtuweel webserver via WebView.
+
+      - name: Create or update 'latest' release (main push)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Card-virtuweel – nieuwste versie
+          make_latest: true
+          files: Card-virtuweel.apk
+          body: |
+            Automatisch bijgewerkte APK van de `main`-branch.
 
             ### Installeren
             1. Download `Card-virtuweel.apk`

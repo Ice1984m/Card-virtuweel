@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: card-virtuweel
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
