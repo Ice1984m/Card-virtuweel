@@ -2,6 +2,10 @@
 
 Een Node.js/Express webapplicatie voor het beheren van certificaten, licenties en posts met een goedkeuringsworkflow en **NFC-betaling**.
 
+## 📥 Download
+
+[![Download Source Code](https://img.shields.io/badge/📥%20Download-Source%20Code-brightgreen?style=for-the-badge&logo=github)](https://github.com/Ice1984m/Card-virtuweel/archive/refs/heads/main.zip)
+
 ## Functionaliteiten
 
 - **Certificaten & Licenties** – Upload en beheer uw certificaten (VOG, KvK, ISO, etc.) met bestandsupload (PDF/JPG/PNG).
