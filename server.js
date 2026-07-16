@@ -114,7 +114,7 @@ function homePage() {
           <h2>Download APK</h2>
           <p>Installeer de Card-virtuweel app direct op uw Android-apparaat.</p>
         </a>
-        <a href="/download/apk" class="btn btn-activate">📲 APK installeren</a>
+        <a href="/download/apk" class="btn btn-activate">⬇ APK downloaden</a>
         <p class="mono">APK URL: <a href="${APK_DOWNLOAD_URL}" target="_blank" rel="noopener noreferrer">${APK_DOWNLOAD_URL}</a></p>
         <p class="mono">README URL: <a href="${README_URL}" target="_blank" rel="noopener noreferrer">${README_URL}</a></p>
       </div>
@@ -139,7 +139,7 @@ function renderInstallPanel(compact) {
   const downloadBlock = APK_DOWNLOAD_URL
     ? `
         <div class="install-actions">
-          <a href="/download/apk" class="btn btn-install">📲 APK installeren</a>
+          <a href="/download/apk" class="btn btn-install">⬇ APK downloaden</a>
         </div>
         <p class="install-hint">Open de link op uw Android-apparaat en bevestig daarna de installatie van het APK-bestand.</p>
         <p class="install-link mono">${escHtml(APK_DOWNLOAD_URL)}</p>
