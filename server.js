@@ -93,8 +93,8 @@ function homePage() {
           <p>Installeer de Card-virtuweel app direct op uw Android-apparaat.</p>
         </a>
         <a href="${APK_DOWNLOAD_URL}" class="btn btn-activate" download>⬇ Download APK</a>
-        <p class="mono">APK URL: <a href="${APK_DOWNLOAD_URL}" target="_blank" rel="noopener noreferrer" aria-label="Download APK file">${APK_DOWNLOAD_URL}</a></p>
-        <p class="mono">README URL: <a href="${README_URL}" target="_blank" rel="noopener noreferrer" aria-label="View README documentation">${README_URL}</a></p>
+        <p class="mono">APK URL: <a href="${APK_DOWNLOAD_URL}" download>${APK_DOWNLOAD_URL}</a></p>
+        <p class="mono">README URL: <a href="${README_URL}" target="_blank" rel="noopener noreferrer">${README_URL}</a></p>
       </div>
     </div>
   `);
