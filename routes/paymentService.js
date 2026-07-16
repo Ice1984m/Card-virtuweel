@@ -10,10 +10,13 @@ const MAX_PURCHASE_AMOUNT = 1000;
 const DAILY_TOP_UP_LIMIT = 2000;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 6;
+const MAX_INVOICE_NUMBER_GENERATION_ATTEMPTS = 10;
+const MAX_STORED_INVOICES = 500;
 
 function defaultState() {
   return {
     wallet: null,
+    invoices: [],
     topUpIntents: [],
     paymentIntents: [],
     transactions: [],
@@ -32,6 +35,7 @@ function readPaymentState() {
     return {
       ...defaultState(),
       ...raw,
+      invoices: Array.isArray(raw.invoices) ? raw.invoices : [],
       topUpIntents: Array.isArray(raw.topUpIntents) ? raw.topUpIntents : [],
       paymentIntents: Array.isArray(raw.paymentIntents) ? raw.paymentIntents : [],
       transactions: Array.isArray(raw.transactions) ? raw.transactions : [],
@@ -178,6 +182,79 @@ function createTopUpIntent(amountInput) {
   return intent;
 }
 
+function generateUniqueInvoiceNumber(state) {
+  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  for (let attempt = 0; attempt < MAX_INVOICE_NUMBER_GENERATION_ATTEMPTS; attempt += 1) {
+    const timestampPart = Date.now().toString(36).toUpperCase();
+    const randomPart = randomInt(100000, 1000000);
+    const number = `INV-${datePart}-${timestampPart}-${randomPart}`;
+    if (!state.invoices.some((entry) => entry.number === number)) {
+      return number;
+    }
+  }
+  return `INV-${datePart}-${randomUUID().slice(0, 8).toUpperCase()}`;
+}
+
+function createInvoice(input) {
+  const state = readPaymentState();
+  const payload = input || {};
+  const description = String(payload.description || '').trim();
+  const dueDateInput = String(payload.dueDate || '').trim();
+  const amount = normalizeAmount(payload.amount);
+
+  if (!description) {
+    const err = new Error('Omschrijving is verplicht voor een factuur.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (amount > MAX_PURCHASE_AMOUNT) {
+    const err = new Error(`Factuurbedrag mag maximaal €${MAX_PURCHASE_AMOUNT.toFixed(2)} zijn.`);
+    err.statusCode = 400;
+    throw err;
+  }
+
+  let dueDate = null;
+  if (dueDateInput) {
+    const parsedDueDate = new Date(dueDateInput);
+    if (Number.isNaN(parsedDueDate.getTime())) {
+      const err = new Error('Vervaldatum is ongeldig.');
+      err.statusCode = 400;
+      throw err;
+    }
+    const dueDateKey = parsedDueDate.toISOString().slice(0, 10);
+    const todayKey = new Date().toISOString().slice(0, 10);
+    if (dueDateKey < todayKey) {
+      const err = new Error('Vervaldatum mag niet in het verleden liggen.');
+      err.statusCode = 400;
+      throw err;
+    }
+    dueDate = parsedDueDate.toISOString();
+  }
+
+  const invoice = {
+    id: randomUUID(),
+    number: generateUniqueInvoiceNumber(state),
+    description,
+    amount,
+    currency: 'EUR',
+    status: 'open',
+    createdAt: new Date().toISOString(),
+    dueDate,
+    paidAt: null,
+    paymentIntentId: null,
+  };
+
+  state.invoices.unshift(invoice);
+  state.invoices = state.invoices.slice(0, MAX_STORED_INVOICES);
+  addAudit(state, 'invoice.created', `Factuur ${invoice.number} aangemaakt voor €${amount.toFixed(2)}.`, {
+    invoiceId: invoice.id,
+    invoiceNumber: invoice.number,
+  });
+  writePaymentState(state);
+  return invoice;
+}
+
 function createPurchaseIntent(post) {
   const state = readPaymentState();
   requireWallet(state);
@@ -210,6 +287,63 @@ function createPurchaseIntent(post) {
     intentId: intent.id,
     amount,
     postId: post.id,
+  });
+  writePaymentState(state);
+  return intent;
+}
+
+function getInvoiceById(invoiceId, state) {
+  const source = state || readPaymentState();
+  return source.invoices.find((entry) => entry.id === invoiceId) || null;
+}
+
+function createInvoicePaymentIntent(invoiceId) {
+  const state = readPaymentState();
+  requireWallet(state);
+  assertRateLimit(state, 'checkout.requested');
+
+  const invoice = getInvoiceById(invoiceId, state);
+  if (!invoice) {
+    const err = new Error('Factuur niet gevonden.');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  if (invoice.status === 'paid') {
+    const err = new Error('Deze factuur is al betaald.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const existingPendingIntent = state.paymentIntents.find((entry) => (
+    entry.invoiceId === invoice.id &&
+    entry.status === 'pending_confirmation'
+  ));
+  if (existingPendingIntent) {
+    return existingPendingIntent;
+  }
+
+  const intent = {
+    id: randomUUID(),
+    type: 'purchase',
+    amount: invoice.amount,
+    currency: invoice.currency || 'EUR',
+    status: 'pending_confirmation',
+    providerReference: `pay_${randomUUID().replace(/-/g, '')}`,
+    createdAt: new Date().toISOString(),
+    confirmedAt: null,
+    failureReason: '',
+    invoiceId: invoice.id,
+    invoiceNumber: invoice.number,
+    postTitle: `Factuur ${invoice.number}`,
+    returnPath: '/wallet',
+  };
+
+  state.paymentIntents.unshift(intent);
+  addAudit(state, 'checkout.requested', `Betaalautorisatie gestart voor factuur ${invoice.number}.`, {
+    intentId: intent.id,
+    amount: intent.amount,
+    invoiceId: invoice.id,
   });
   writePaymentState(state);
   return intent;
@@ -302,6 +436,19 @@ function processWebhookEvent(event) {
       } else {
         state.wallet.balance = Math.round((Number(state.wallet.balance || 0) - intent.amount) * 100) / 100;
         markIntentTerminal(intent, 'confirmed');
+        if (intent.invoiceId) {
+          const invoice = getInvoiceById(intent.invoiceId, state);
+          if (invoice) {
+            invoice.status = 'paid';
+            invoice.paidAt = intent.confirmedAt;
+            invoice.paymentIntentId = intent.id;
+          } else {
+            addAudit(state, 'invoice.missing', `Betaling bevestigd maar factuur ${intent.invoiceId} ontbreekt in opslag.`, {
+              intentId: intent.id,
+              invoiceId: intent.invoiceId,
+            });
+          }
+        }
         pushTransaction(state, {
           id: randomUUID(),
           type: 'purchase',
@@ -433,8 +580,11 @@ module.exports = {
   DAILY_TOP_UP_LIMIT,
   readPaymentState,
   createSandboxWallet,
+  createInvoice,
   createTopUpIntent,
   createPurchaseIntent,
+  createInvoicePaymentIntent,
+  getInvoiceById,
   getIntentById,
   confirmIntent,
   getGoLiveReadiness,

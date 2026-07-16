@@ -65,6 +65,9 @@ De repository gebruikt geen echte PAN-, CVC-, itsme- of bankgegevens. In plaats 
 ### API checks voor livegang
 
 - `GET /wallet/api/status` toont walletstatus, openstaande bevestigingen en live-goedkeuringschecks
+- `GET /wallet/api/invoices` toont alle gegenereerde facturen inclusief betaalstatus
+- `POST /wallet/api/invoices` genereert een nieuwe factuur met `description`, `amount` en optioneel `dueDate`
+- `POST /wallet/api/invoices/:id/pay` start een sandbox betaalintentie voor een open factuur
 - `GET /wallet/api/approvals` genereert een sandbox-dev live/Render goedkeuringsrapport
 - `GET /wallet/api/intents/:id` toont of een top-up of betaling is gelukt of mislukt
 - `POST /wallet/api/intents/:id/confirm` voert een testbevestiging uit met `decision=approve|fail|cancel`
