@@ -1,6 +1,18 @@
 'use strict';
 
 function layout(title, content) {
+  const navLinks = [
+    { href: '/wallet',       label: 'Wallet' },
+    { href: '/certificates', label: 'Certificaten' },
+    { href: '/posts',        label: 'Posts' },
+    { href: '/bridges',      label: 'Routing' },
+    { href: '/browser',      label: 'Browser' },
+    { href: '/admin',        label: 'Admin' },
+  ];
+  const navHtml = navLinks.map(({ href, label }) =>
+    `<a href="${href}">${label}</a>`
+  ).join('');
+
   return `<!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -19,13 +31,9 @@ function layout(title, content) {
 <body>
   <nav class="topnav">
     <a href="/" class="brand">Card-virtuweel</a>
-    <div class="nav-links">
-      <a href="/wallet">Wallet</a>
-      <a href="/certificates">Certificaten</a>
-      <a href="/posts">Posts</a>
-      <a href="/bridges">Routing</a>
-      <a href="/browser">Browser</a>
-      <a href="/admin">Admin</a>
+    <button class="nav-toggle" aria-label="Menu openen" aria-expanded="false">☰</button>
+    <div id="nav-links" class="nav-links">
+      ${navHtml}
     </div>
   </nav>
   <main class="container">
@@ -35,6 +43,24 @@ function layout(title, content) {
     <p>&copy; ${new Date().getFullYear()} Card-virtuweel</p>
   </footer>
   <script>
+    (function () {
+      var path = window.location.pathname;
+      document.querySelectorAll('.nav-links a').forEach(function (a) {
+        var href = a.getAttribute('href');
+        if (href !== '/' && (path === href || path.startsWith(href + '/'))) {
+          a.classList.add('nav-active');
+        }
+      });
+      var toggle = document.querySelector('.nav-toggle');
+      var navLinks = document.getElementById('nav-links');
+      if (toggle && navLinks) {
+        toggle.addEventListener('click', function () {
+          var expanded = toggle.getAttribute('aria-expanded') === 'true';
+          toggle.setAttribute('aria-expanded', String(!expanded));
+          navLinks.classList.toggle('nav-open');
+        });
+      }
+    })();
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(function(err) {
         console.warn('Service worker registratie mislukt:', err);

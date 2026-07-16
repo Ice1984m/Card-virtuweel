@@ -20,6 +20,7 @@ const {
   confirmIntent,
   getGoLiveReadiness,
   generateApprovalReport,
+  resetWallet,
 } = require('./paymentService');
 
 const router = express.Router();
@@ -82,6 +83,11 @@ router.post('/card/request', (req, res) => {
       <a href="/wallet" class="btn">← Terug naar wallet</a>
     `));
   }
+});
+
+router.post('/card/reset', (req, res) => {
+  resetWallet();
+  res.redirect('/wallet?flash=Sandbox+wallet+gereset');
 });
 
 router.post('/topups', (req, res) => {
@@ -251,20 +257,20 @@ router.post('/api/invoices/:invoiceId/pay', (req, res) => {
       intent,
       checkoutUrl: `/wallet/checkout/${encodeURIComponent(intent.id)}`,
     });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ error: err.message });
+  }
+});
 
-    router.post('/api/wallet/bank-account', (req, res) => {
-      try {
-        const wallet = setWalletBankAccount(req.body.iban);
-        res.json({
-          success: true,
-          wallet: {
-            ...wallet,
-            linkedBankAccount: wallet.maskedBankAccount || null,
-          },
-        });
-      } catch (err) {
-        res.status(err.statusCode || 500).json({ error: err.message });
-      }
+router.post('/api/wallet/bank-account', (req, res) => {
+  try {
+    const wallet = setWalletBankAccount(req.body.iban);
+    res.json({
+      success: true,
+      wallet: {
+        ...wallet,
+        linkedBankAccount: wallet.maskedBankAccount || null,
+      },
     });
   } catch (err) {
     res.status(err.statusCode || 500).json({ error: err.message });
@@ -353,6 +359,9 @@ function renderWalletSummary(wallet) {
           <strong class="mono">${escHtml(wallet.maskedBankAccount || 'Nog niet gekoppeld')}</strong>
         </div>
       </div>
+      <form method="POST" action="/wallet/card/reset" class="wallet-reset-form" onsubmit="return confirm('Weet u zeker dat u de sandbox wallet wilt resetten? Alle gegevens worden verwijderd.');">
+        <button type="submit" class="btn btn-secondary btn-small">🗑 Wallet resetten</button>
+      </form>
     </section>
   `;
 }
@@ -506,14 +515,15 @@ function renderInvoiceManager(state) {
       </form>
       <div class="table-wrap wallet-table-spacing">
         <table>
-          <thead><tr><th>Factuur</th><th>Bedrag</th><th>Status</th><th>Actie</th></tr></thead>
+          <thead><tr><th>Factuur</th><th>Bedrag</th><th>Vervaldatum</th><th>Status</th><th>Actie</th></tr></thead>
           <tbody>
             ${latestInvoices.length ? latestInvoices.map((entry) => `<tr>
               <td><strong>${escHtml(entry.number)}</strong><br><span class="wallet-copy">${escHtml(entry.description)}</span></td>
               <td>€${escHtml(formatPrice(entry.amount))}</td>
+              <td>${entry.dueDate ? escHtml(new Date(entry.dueDate).toLocaleDateString('nl-NL')) : '—'}</td>
               <td><span class="badge ${entry.status === 'paid' ? 'badge-approved' : 'badge-pending'}">${escHtml(entry.status)}</span></td>
               <td>${entry.status === 'open' ? `<form method="POST" action="/wallet/invoices/${encodeURIComponent(entry.id)}/pay"><button type="submit" class="btn btn-small btn-pay">Betaal</button></form>` : 'Betaald'}</td>
-            </tr>`).join('') : '<tr><td colspan="4" class="empty">Nog geen facturen.</td></tr>'}
+            </tr>`).join('') : '<tr><td colspan="5" class="empty">Nog geen facturen.</td></tr>'}
           </tbody>
         </table>
       </div>
