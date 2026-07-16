@@ -14,7 +14,7 @@ function loadService(paymentFile) {
 }
 
 test('top-up confirm updates balance and readiness output', () => {
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'card-virtuweel-payments-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'card-virtueel-payments-'));
   const paymentFile = path.join(tempDir, 'payments.json');
   const service = loadService(paymentFile);
 
