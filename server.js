@@ -94,13 +94,13 @@ function homePage() {
         <a href="/bridges" class="btn btn-activate">▶ Activeer</a>
       </div>
       <div class="card-wrapper">
-        <a href="${apkDownloadUrl}" class="card" download>
+        <div class="card">
           <span class="icon">📲</span>
           <h2>Download APK</h2>
           <p>Installeer de Card-virtuweel app direct op uw Android-apparaat.</p>
-          <p class="mono">APK URL: ${apkDownloadUrl}</p>
-          <p class="mono">README URL: ${readmeUrl}</p>
-        </a>
+          <p class="mono"><a href="${apkDownloadUrl}" download>APK URL: ${apkDownloadUrl}</a></p>
+          <p class="mono"><a href="${readmeUrl}" target="_blank" rel="noopener">README URL: ${readmeUrl}</a></p>
+        </div>
         <a href="${apkDownloadUrl}" class="btn btn-activate" download>⬇ Download APK</a>
       </div>
     </div>
