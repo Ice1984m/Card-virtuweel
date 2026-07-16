@@ -6,7 +6,7 @@ Beheer certificaten, licenties en posts met goedkeuringsworkflow en **NFC/kaartb
 
 ## 📲 App installeren op Android
 
-[![Download APK](https://img.shields.io/badge/⬇%20Download%20APK-installeer%20direct-brightgreen?style=for-the-badge)](https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk)
+[![Download APK](https://img.shields.io/badge/⬇%20Download%20APK-installeer%20direct-brightgreen?style=for-the-badge)](https://github.com/Ice1984m/Card-virtuweel/releases/download/card-virtuweel-apk/Card-virtuweel.apk)
 
 **3 stappen, klaar:**
 
@@ -27,7 +27,7 @@ Alles is geautomatiseerd via GitHub Actions en Render.com:
 |---|---|
 | Push naar `main` | Server deployt automatisch op Render.com |
 | Push naar `main` | Nieuwe APK wordt automatisch gebouwd en gepubliceerd |
-| Download-URL | `releases/latest/download/Card-virtuweel.apk` altijd actueel |
+| Download-URL | `releases/download/card-virtuweel-apk/Card-virtuweel.apk` altijd actueel |
 
 De `render.yaml` in deze repo regelt de Render.com-deployment automatisch zodra u de repository koppelt aan uw Render-account.
 
@@ -73,5 +73,5 @@ Optioneel in `.env`:
 
 ```
 PORT=4242
-APK_DOWNLOAD_URL=https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk
+APK_DOWNLOAD_URL=https://github.com/Ice1984m/Card-virtuweel/releases/download/card-virtuweel-apk/Card-virtuweel.apk
 ```
