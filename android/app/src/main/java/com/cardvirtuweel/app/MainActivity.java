@@ -1,9 +1,11 @@
 package com.cardvirtuweel.app;
 
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -13,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "MainActivity";
     private WebView webView;
 
     @Override
@@ -42,7 +45,11 @@ public class MainActivity extends AppCompatActivity {
                 }
                 Intent browserIntent = new Intent(Intent.ACTION_VIEW, uri);
                 if (browserIntent.resolveActivity(getPackageManager()) != null) {
-                    startActivity(browserIntent);
+                    try {
+                        startActivity(browserIntent);
+                    } catch (ActivityNotFoundException | SecurityException err) {
+                        Log.w(TAG, "Kon externe link niet openen: " + uri, err);
+                    }
                 }
                 return true;
             }
