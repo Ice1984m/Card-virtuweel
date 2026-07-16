@@ -390,7 +390,7 @@ function renderWalletSettings(wallet) {
         <div class="form-group">
           <label for="dagelijksUitgavelimiet">Dagelijks uitgavelimiet (€)</label>
           <input id="dagelijksUitgavelimiet" name="dagelijksUitgavelimiet" type="number" min="1" max="${MAX_TOP_UP_AMOUNT}" step="0.01" value="${escHtml(String(s.dagelijksUitgavelimiet))}" required>
-          <small class="install-hint">Maximaal €${escHtml(String(MAX_TOP_UP_AMOUNT))} per instelling. Daglimiet top-up: €${escHtml(String(DAILY_TOP_UP_LIMIT))}.</small>
+          <small class="install-hint">Maximaal dagelijks uitgavelimiet: €${escHtml(String(MAX_TOP_UP_AMOUNT))}.</small>
         </div>
         <div class="form-group">
           <label>
@@ -434,7 +434,7 @@ function renderAiAssistant(wallet) {
         width="100%"
         height="480"
         style="border:1px solid #ddd;border-radius:6px;background:#fafafa;"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        sandbox="allow-scripts allow-forms allow-popups"
         loading="lazy"
       ></iframe>
       <p class="install-hint">Werkt de bot niet in het venster? <a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer">Open in nieuw tabblad</a>.</p>

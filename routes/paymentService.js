@@ -642,8 +642,8 @@ function updateWalletSettings(input) {
   const labelNaam = String(payload.labelNaam !== undefined ? payload.labelNaam : existing.labelNaam).trim().slice(0, 80);
 
   const limitInput = Number.parseFloat(payload.dagelijksUitgavelimiet);
-  if (!Number.isFinite(limitInput) || limitInput < 1 || limitInput > DAILY_TOP_UP_LIMIT) {
-    const err = new Error(`Dagelijks uitgavelimiet moet tussen €1,00 en €${DAILY_TOP_UP_LIMIT.toFixed(2)} liggen.`);
+  if (!Number.isFinite(limitInput) || limitInput < 1 || limitInput > MAX_TOP_UP_AMOUNT) {
+    const err = new Error(`Dagelijks uitgavelimiet moet tussen €1,00 en €${MAX_TOP_UP_AMOUNT.toFixed(2)} liggen.`);
     err.statusCode = 400;
     throw err;
   }
@@ -653,7 +653,7 @@ function updateWalletSettings(input) {
   const autoBevestigOpladen = payload.autoBevestigOpladen === 'true' || payload.autoBevestigOpladen === true;
 
   const rawUrl = String(payload.aiAssistentUrl !== undefined ? payload.aiAssistentUrl : existing.aiAssistentUrl).trim();
-  if (rawUrl && !/^https?:\/\/.{3,}/.test(rawUrl)) {
+  if (rawUrl && !/^https:\/\/.{3,}/.test(rawUrl)) {
     const err = new Error('AI-assistent URL moet een geldige https:// URL zijn.');
     err.statusCode = 400;
     throw err;
