@@ -21,6 +21,9 @@ const DEFAULT_APK_DOWNLOAD_URL = 'https://github.com/Ice1984m/Card-virtuweel/rel
 const ENV_APK_DOWNLOAD_URL = process.env.APK_DOWNLOAD_URL || '';
 const CONFIGURED_APK_DOWNLOAD_URL = safeExternalUrl(ENV_APK_DOWNLOAD_URL);
 const APK_DOWNLOAD_URL = CONFIGURED_APK_DOWNLOAD_URL || DEFAULT_APK_DOWNLOAD_URL;
+const MAX_REDIRECT_DEPTH = 5;
+const REQUEST_TIMEOUT_MS = 5000;
+const SERVER_USER_AGENT = 'Card-virtuweel-server';
 
 if (ENV_APK_DOWNLOAD_URL && !CONFIGURED_APK_DOWNLOAD_URL) {
   console.warn('Ongeldige APK_DOWNLOAD_URL in omgeving, fallback naar standaard APK-link.');
@@ -200,7 +203,7 @@ function apkNotFoundPage(status) {
 }
 
 function checkUrlHead(url, callback, depth) {
-  if ((depth || 0) > 5) {
+  if ((depth || 0) > MAX_REDIRECT_DEPTH) {
     callback(null);
     return;
   }
@@ -213,7 +216,7 @@ function checkUrlHead(url, callback, depth) {
     const lib = parsedUrl.protocol === 'https:' ? https : http;
     const port = parsedUrl.port ? parseInt(parsedUrl.port, 10) : (parsedUrl.protocol === 'https:' ? 443 : 80);
     const req = lib.request(
-      { method: 'HEAD', hostname: parsedUrl.hostname, port, path: parsedUrl.pathname + parsedUrl.search, headers: { 'User-Agent': 'Card-virtuweel-server' } },
+      { method: 'HEAD', hostname: parsedUrl.hostname, port, path: parsedUrl.pathname + parsedUrl.search, headers: { 'User-Agent': SERVER_USER_AGENT } },
       (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           let location;
@@ -233,7 +236,7 @@ function checkUrlHead(url, callback, depth) {
       console.warn('[checkUrlHead] Request error for', url, err.message);
       callback(null);
     });
-    req.setTimeout(5000, () => { req.destroy(); callback(null); });
+    req.setTimeout(REQUEST_TIMEOUT_MS, () => { req.destroy(); callback(null); });
     req.end();
   } catch (_) {
     callback(null);
