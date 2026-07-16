@@ -3,6 +3,8 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const https = require('https');
+const http = require('http');
 
 const { layout } = require('./routes/layout');
 const { escHtml, safeExternalUrl } = require('./routes/helpers');
@@ -19,6 +21,9 @@ const DEFAULT_APK_DOWNLOAD_URL = 'https://github.com/Ice1984m/Card-virtuweel/rel
 const ENV_APK_DOWNLOAD_URL = process.env.APK_DOWNLOAD_URL || '';
 const CONFIGURED_APK_DOWNLOAD_URL = safeExternalUrl(ENV_APK_DOWNLOAD_URL);
 const APK_DOWNLOAD_URL = CONFIGURED_APK_DOWNLOAD_URL || DEFAULT_APK_DOWNLOAD_URL;
+const MAX_REDIRECT_DEPTH = 5;
+const REQUEST_TIMEOUT_MS = 5000;
+const SERVER_USER_AGENT = 'Card-virtuweel-server';
 
 if (ENV_APK_DOWNLOAD_URL && !CONFIGURED_APK_DOWNLOAD_URL) {
   console.warn('Ongeldige APK_DOWNLOAD_URL in omgeving, fallback naar standaard APK-link.');
@@ -41,6 +46,16 @@ app.get('/', (req, res) => {
 
 app.get('/install', (req, res) => {
   res.send(installPage());
+});
+
+app.get('/download/apk', (req, res) => {
+  checkUrlHead(APK_DOWNLOAD_URL, (status) => {
+    if (status >= 200 && status < 400) {
+      res.redirect(302, APK_DOWNLOAD_URL);
+    } else {
+      res.status(404).send(apkNotFoundPage(status));
+    }
+  });
 });
 
 app.use((req, res) => {
@@ -100,13 +115,13 @@ function homePage() {
         <a href="/bridges" class="btn btn-activate">▶ Activeer</a>
       </div>
       <div class="card-wrapper">
-        <a href="${APK_DOWNLOAD_URL}" class="card" download>
+        <a href="/download/apk" class="card">
           <span class="icon">📲</span>
           <h2>Download APK</h2>
           <p>Installeer de Card-virtuweel app direct op uw Android-apparaat.</p>
         </a>
-        <a href="${APK_DOWNLOAD_URL}" class="btn btn-activate" download>⬇ Download APK</a>
-        <p class="mono">APK URL: <a href="${APK_DOWNLOAD_URL}" download>${APK_DOWNLOAD_URL}</a></p>
+        <a href="/download/apk" class="btn btn-activate">⬇ Download APK</a>
+        <p class="mono">APK URL: <a href="${APK_DOWNLOAD_URL}" target="_blank" rel="noopener noreferrer">${APK_DOWNLOAD_URL}</a></p>
         <p class="mono">README URL: <a href="${README_URL}" target="_blank" rel="noopener noreferrer">${README_URL}</a></p>
       </div>
     </div>
@@ -130,7 +145,7 @@ function renderInstallPanel(compact) {
   const downloadBlock = APK_DOWNLOAD_URL
     ? `
         <div class="install-actions">
-          <a href="${escHtml(APK_DOWNLOAD_URL)}" class="btn btn-install" target="_blank" rel="noopener noreferrer">⬇ Download APK</a>
+          <a href="/download/apk" class="btn btn-install">⬇ Download APK</a>
         </div>
         <p class="install-hint">Open de link op uw Android-apparaat en bevestig daarna de installatie van het APK-bestand.</p>
         <p class="install-link mono">${escHtml(APK_DOWNLOAD_URL)}</p>
@@ -170,6 +185,62 @@ function notFoundPage() {
       <a href="/" class="btn">← Terug naar home</a>
     </div>
   `);
+}
+
+function apkNotFoundPage(status) {
+  return layout('APK niet beschikbaar', `
+    <div class="hero">
+      <h1>📲 APK niet beschikbaar</h1>
+      <p>De APK kon niet worden gevonden (HTTP ${status || '?'}).</p>
+      <p>De APK-release is mogelijk nog niet gepubliceerd. Probeer het later opnieuw of installeer de app als PWA via Chrome.</p>
+      <p class="mono">APK URL: <a href="${escHtml(APK_DOWNLOAD_URL)}" target="_blank" rel="noopener noreferrer">${escHtml(APK_DOWNLOAD_URL)}</a></p>
+      <div style="margin-top:1.5rem">
+        <a href="/install" class="btn">📦 Installatie-instructies</a>
+        <a href="/" class="btn btn-secondary">← Terug naar home</a>
+      </div>
+    </div>
+  `);
+}
+
+function checkUrlHead(url, callback, depth) {
+  if ((depth || 0) > MAX_REDIRECT_DEPTH) {
+    callback(null);
+    return;
+  }
+  try {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+      callback(null);
+      return;
+    }
+    const lib = parsedUrl.protocol === 'https:' ? https : http;
+    const port = parsedUrl.port ? parseInt(parsedUrl.port, 10) : (parsedUrl.protocol === 'https:' ? 443 : 80);
+    const req = lib.request(
+      { method: 'HEAD', hostname: parsedUrl.hostname, port, path: parsedUrl.pathname + parsedUrl.search, headers: { 'User-Agent': SERVER_USER_AGENT } },
+      (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          let location;
+          try {
+            location = new URL(res.headers.location, url).toString();
+          } catch (_) {
+            callback(null);
+            return;
+          }
+          checkUrlHead(location, callback, (depth || 0) + 1);
+        } else {
+          callback(res.statusCode);
+        }
+      }
+    );
+    req.on('error', (err) => {
+      console.warn('[checkUrlHead] Request error for', url, err.message);
+      callback(null);
+    });
+    req.setTimeout(REQUEST_TIMEOUT_MS, () => { req.destroy(); callback(null); });
+    req.end();
+  } catch (_) {
+    callback(null);
+  }
 }
 
 module.exports = app;
