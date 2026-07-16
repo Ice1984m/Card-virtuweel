@@ -217,12 +217,12 @@ router.post('/certificates/:id/approve', (req, res) => {
     writeJson(CERTS_FILE, certs);
   }
   const reloadAmount = Number.parseFloat(req.body.reloadAmount);
-  if (cert && Number.isFinite(reloadAmount) && reloadAmount > 0) {
+  if (cert && Number.isFinite(reloadAmount) && reloadAmount > 0 && reloadAmount <= 10000) {
     try {
       injectSandboxCredit(reloadAmount);
       return res.redirect(`/admin?flash=Certificaat+goedgekeurd+en+€${reloadAmount.toFixed(2)}+aan+wallet+toegevoegd`);
-    } catch (_) {
-      // wallet may not be configured – silently skip credit injection
+    } catch (err) {
+      console.warn('[admin] Wallet credit injectie mislukt bij certificaatgoedkeuring:', err.message);
     }
   }
   res.redirect('/admin?flash=Certificaat+goedgekeurd');

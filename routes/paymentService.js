@@ -706,6 +706,10 @@ function resetWallet() {
   writePaymentState(defaultState());
 }
 
+function roundToCents(amount) {
+  return Math.round(amount * 100) / 100;
+}
+
 const MAX_SANDBOX_CREDIT_INJECT = 10000;
 
 function injectSandboxCredit(amount) {
@@ -717,7 +721,7 @@ function injectSandboxCredit(amount) {
   }
   const state = readPaymentState();
   requireWallet(state);
-  state.wallet.balance = Math.round((Number(state.wallet.balance || 0) + parsed) * 100) / 100;
+  state.wallet.balance = roundToCents(Number(state.wallet.balance || 0) + parsed);
   state.wallet.availableBalance = state.wallet.balance;
   const ref = `sandbox_inject_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
   pushTransaction(state, {
@@ -759,7 +763,7 @@ function autoSetupSandboxWallet(holderName) {
   writePaymentState(freshState);
 
   const newState = readPaymentState();
-  newState.wallet.balance = Math.round((Number(newState.wallet.balance || 0) + 100) * 100) / 100;
+  newState.wallet.balance = roundToCents(Number(newState.wallet.balance || 0) + 100);
   newState.wallet.availableBalance = newState.wallet.balance;
   const ref = `ai_setup_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
   pushTransaction(newState, {
