@@ -16,7 +16,13 @@ const app = express();
 const PORT = process.env.PORT || 4242;
 const README_URL = 'https://github.com/Ice1984m/Card-virtuweel#readme';
 const DEFAULT_APK_DOWNLOAD_URL = 'https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk';
-const APK_DOWNLOAD_URL = safeExternalUrl(process.env.APK_DOWNLOAD_URL) || DEFAULT_APK_DOWNLOAD_URL;
+const ENV_APK_DOWNLOAD_URL = process.env.APK_DOWNLOAD_URL || '';
+const CONFIGURED_APK_DOWNLOAD_URL = safeExternalUrl(ENV_APK_DOWNLOAD_URL);
+const APK_DOWNLOAD_URL = CONFIGURED_APK_DOWNLOAD_URL || DEFAULT_APK_DOWNLOAD_URL;
+
+if (ENV_APK_DOWNLOAD_URL && !CONFIGURED_APK_DOWNLOAD_URL) {
+  console.warn('Ongeldige APK_DOWNLOAD_URL in omgeving, fallback naar standaard APK-link.');
+}
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -119,7 +125,7 @@ function installPage() {
 
 function renderInstallPanel(compact) {
   const installStep = APK_DOWNLOAD_URL
-    ? 'Tik op "Download APK" en open het gedownloade bestand.'
+    ? 'Tik op "Download APK" en open het gedownload bestand.'
     : 'Gebruik "Toevoegen aan startscherm" in Chrome zolang er nog geen APK-link is ingesteld.';
   const downloadBlock = APK_DOWNLOAD_URL
     ? `
