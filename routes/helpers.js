@@ -29,4 +29,17 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-module.exports = { readJson, writeJson, formatPrice, escHtml };
+function safeExternalUrl(value) {
+  if (!value) {
+    return '';
+  }
+
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : '';
+  } catch (err) {
+    return '';
+  }
+}
+
+module.exports = { readJson, writeJson, formatPrice, escHtml, safeExternalUrl };
