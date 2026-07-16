@@ -49,7 +49,12 @@ app.get('/install', (req, res) => {
 });
 
 app.get('/download/apk', (req, res) => {
-  res.redirect(302, APK_DOWNLOAD_URL);
+  const validatedDownloadUrl = safeExternalUrl(APK_DOWNLOAD_URL);
+  if (!validatedDownloadUrl) {
+    res.status(404).send(apkNotFoundPage(null));
+    return;
+  }
+  res.redirect(302, validatedDownloadUrl);
 });
 
 app.use((req, res) => {
