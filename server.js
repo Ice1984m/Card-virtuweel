@@ -43,6 +43,9 @@ app.listen(PORT, () => {
 });
 
 function homePage() {
+  const apkDownloadUrl = 'https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk';
+  const readmeUrl = 'https://github.com/Ice1984m/Card-virtuweel#readme';
+
   return layout('Card-virtuweel – Home', `
     <div class="hero">
       <h1>Card-virtuweel</h1>
@@ -91,12 +94,14 @@ function homePage() {
         <a href="/bridges" class="btn btn-activate">▶ Activeer</a>
       </div>
       <div class="card-wrapper">
-        <a href="https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk" class="card" download>
+        <a href="${apkDownloadUrl}" class="card" download>
           <span class="icon">📲</span>
           <h2>Download APK</h2>
           <p>Installeer de Card-virtuweel app direct op uw Android-apparaat.</p>
+          <p class="mono">APK URL: ${apkDownloadUrl}</p>
+          <p class="mono">README URL: ${readmeUrl}</p>
         </a>
-        <a href="https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk" class="btn btn-activate" download>⬇ Download APK</a>
+        <a href="${apkDownloadUrl}" class="btn btn-activate" download>⬇ Download APK</a>
       </div>
     </div>
   `);
