@@ -5,7 +5,7 @@ const express = require('express');
 const path = require('path');
 
 const { layout } = require('./routes/layout');
-const { escHtml } = require('./routes/helpers');
+const { escHtml, safeExternalUrl } = require('./routes/helpers');
 const certificatesRouter = require('./routes/certificates');
 const postsRouter = require('./routes/posts');
 const adminRouter = require('./routes/admin');
@@ -16,6 +16,7 @@ const app = express();
 const PORT = process.env.PORT || 4242;
 const README_URL = 'https://github.com/Ice1984m/Card-virtuweel#readme';
 const DEFAULT_APK_DOWNLOAD_URL = 'https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk';
+const APK_DOWNLOAD_URL = safeExternalUrl(process.env.APK_DOWNLOAD_URL) || DEFAULT_APK_DOWNLOAD_URL;
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -164,20 +165,5 @@ function notFoundPage() {
     </div>
   `);
 }
-
-function safeExternalUrl(value) {
-  if (!value) {
-    return '';
-  }
-
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : '';
-  } catch (err) {
-    return '';
-  }
-}
-
-const APK_DOWNLOAD_URL = safeExternalUrl(process.env.APK_DOWNLOAD_URL) || DEFAULT_APK_DOWNLOAD_URL;
 
 module.exports = app;
