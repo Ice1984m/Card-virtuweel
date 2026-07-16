@@ -185,7 +185,7 @@ function buildPaymentBlock(post, paymentState) {
     return `
       <div class="payment-section">
         <h2>Betaling</h2>
-        <div class="demo-notice">Gebruik eerst de sandbox wallet om een prepaid testkaart aan te maken.</div>
+        <div class="demo-notice">Gebruik eerst de wallet testomgeving om een prepaid testkaart aan te maken.</div>
         <p>Deze flow gebruikt alleen server-side tokens en bevestigingen. Er worden geen ruwe kaartgegevens in de browser opgeslagen.</p>
         <a href="/wallet" class="btn btn-pay">💳 Open sandbox wallet</a>
       </div>
@@ -195,7 +195,7 @@ function buildPaymentBlock(post, paymentState) {
   return `
     <div class="payment-section">
       <h2>Veilige sandbox betaling</h2>
-      <div class="demo-notice">Provider-redirect in sandboxmodus met server-side autorisatie, auditlogging en token-gebaseerd kaartbeheer.</div>
+      <div class="demo-notice">Provider-redirect in testmodus met server-side autorisatie, auditlogging en token-gebaseerd kaartbeheer.</div>
       <div class="wallet-inline-card">
         <div>
           <p class="wallet-inline-title">Actieve kaart</p>

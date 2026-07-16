@@ -623,6 +623,23 @@ footer {
 .wallet-rules li + li {
   margin-top: .5rem;
 }
+.wallet-readiness-list {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  margin-top: 1rem;
+}
+.wallet-readiness-item {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .85rem 1rem;
+}
+.wallet-readiness-item p {
+  color: var(--muted);
+  font-size: .9rem;
+  margin-top: .25rem;
+}
 .checkout-summary {
   display: grid;
   gap: .9rem;

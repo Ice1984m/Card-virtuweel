@@ -62,6 +62,12 @@ De repository gebruikt geen echte PAN-, CVC-, itsme- of bankgegevens. In plaats 
 
 > Voor productie integreert u een erkende provider voor issuing, SCA en webhooks.
 
+### API checks voor livegang
+
+- `GET /wallet/api/status` toont walletstatus, openstaande bevestigingen en live-goedkeuringschecks
+- `GET /wallet/api/intents/:id` toont of een top-up of betaling is gelukt of mislukt
+- `POST /wallet/api/intents/:id/confirm` voert een testbevestiging uit met `decision=approve|fail|cancel`
+
 ---
 
 ## Lokaal ontwikkelen

@@ -4,7 +4,7 @@ const express = require('express');
 const path = require('path');
 const { layout } = require('./layout');
 const { readJson, writeJson, formatPrice, escHtml } = require('./helpers');
-const { readPaymentState } = require('./paymentService');
+const { readPaymentState, getGoLiveReadiness } = require('./paymentService');
 const { sha256, merkleRoot } = require('./onion');
 
 const router = express.Router();
@@ -19,6 +19,7 @@ router.get('/', (req, res) => {
   const certs = readJson(CERTS_FILE);
   const posts = readJson(POSTS_FILE);
   const payments = readPaymentState();
+  const goLiveReadiness = getGoLiveReadiness(payments);
 
   const pendingCerts = certs.filter(c => c.status === 'pending');
   const pendingPosts = posts.filter(p => p.status === 'pending_approval');
@@ -102,7 +103,7 @@ router.get('/', (req, res) => {
 
     <section class="admin-section">
       <h2>Sandbox wallet overzicht</h2>
-      ${paymentSummary(payments, pendingTopUps.length, pendingPayments.length)}
+      ${paymentSummary(payments, pendingTopUps.length, pendingPayments.length, goLiveReadiness)}
     </section>
 
     <section class="admin-section">
@@ -147,7 +148,7 @@ function allPostsTable(posts) {
   </table></div>`;
 }
 
-function paymentSummary(payments, pendingTopUps, pendingPayments) {
+function paymentSummary(payments, pendingTopUps, pendingPayments, goLiveReadiness) {
   if (!payments.wallet) {
     return '<p class="empty">Nog geen sandbox wallet aangemaakt.</p>';
   }
@@ -184,6 +185,12 @@ function paymentSummary(payments, pendingTopUps, pendingPayments) {
           </tr>
         </tbody>
       </table>
+    </div>
+    <div class="wallet-readiness-list" style="margin-top:1rem">
+      <div class="wallet-readiness-item">
+        <strong>${goLiveReadiness.canGoLive ? '✅' : '⚠️'} Live-goedkeuring</strong>
+        <p>${goLiveReadiness.canGoLive ? 'Alle checks staan op groen.' : 'Externe productiegoedkeuring ontbreekt nog; gebruik /wallet/api/status voor API-controle.'}</p>
+      </div>
     </div>
   `;
 }

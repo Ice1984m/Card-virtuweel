@@ -4,7 +4,6 @@ const fs = require('fs');
 const path = require('path');
 const { randomUUID, randomInt } = require('crypto');
 
-const PAYMENT_FILE = path.join(__dirname, '../data/payments.json');
 const MIN_TOP_UP_AMOUNT = 5;
 const MAX_TOP_UP_AMOUNT = 500;
 const MAX_PURCHASE_AMOUNT = 1000;
@@ -23,9 +22,13 @@ function defaultState() {
   };
 }
 
+function getPaymentFile() {
+  return process.env.PAYMENT_FILE || path.join(__dirname, '../data/payments.json');
+}
+
 function readPaymentState() {
   try {
-    const raw = JSON.parse(fs.readFileSync(PAYMENT_FILE, 'utf8'));
+    const raw = JSON.parse(fs.readFileSync(getPaymentFile(), 'utf8'));
     return {
       ...defaultState(),
       ...raw,
@@ -44,7 +47,7 @@ function readPaymentState() {
 }
 
 function writePaymentState(state) {
-  fs.writeFileSync(PAYMENT_FILE, JSON.stringify(state, null, 2));
+  fs.writeFileSync(getPaymentFile(), JSON.stringify(state, null, 2));
 }
 
 function normalizeAmount(value) {
@@ -355,6 +358,51 @@ function confirmIntent(intentId, decision) {
   });
 }
 
+function getGoLiveReadiness(stateInput) {
+  const state = stateInput || readPaymentState();
+  const pendingCount = [...state.topUpIntents, ...state.paymentIntents]
+    .filter((entry) => entry.status === 'pending_confirmation')
+    .length;
+  const checks = [
+    {
+      key: 'wallet_configured',
+      label: 'Wallet geconfigureerd',
+      passed: Boolean(state.wallet),
+      detail: state.wallet ? 'Provider-token en gemaskeerde kaart aanwezig.' : 'Maak eerst een wallet aan.',
+    },
+    {
+      key: 'no_pending_confirmations',
+      label: 'Geen openstaande bevestigingen',
+      passed: pendingCount === 0,
+      detail: pendingCount === 0 ? 'Geen openstaande top-ups of betalingen.' : `${pendingCount} bevestiging(en) wachten nog op verwerking.`,
+    },
+    {
+      key: 'audit_logging_active',
+      label: 'Audit logging actief',
+      passed: state.auditLog.length > 0,
+      detail: state.auditLog.length > 0 ? 'Server-side audittrail aanwezig.' : 'Nog geen audit-events beschikbaar.',
+    },
+    {
+      key: 'render_deployment_configured',
+      label: 'Render deploymentbestand aanwezig',
+      passed: fs.existsSync(path.join(__dirname, '../render.yaml')),
+      detail: 'render.yaml bepaalt de deploy-configuratie voor live hosting.',
+    },
+    {
+      key: 'external_provider_live_approval',
+      label: 'Externe live-goedkeuring',
+      passed: false,
+      detail: 'KYC/AML, provider-contracten en productiecertificaten moeten buiten deze app worden afgegeven.',
+    },
+  ];
+
+  return {
+    mode: 'test',
+    canGoLive: checks.every((entry) => entry.passed),
+    checks,
+  };
+}
+
 module.exports = {
   MIN_TOP_UP_AMOUNT,
   MAX_TOP_UP_AMOUNT,
@@ -365,4 +413,5 @@ module.exports = {
   createPurchaseIntent,
   getIntentById,
   confirmIntent,
+  getGoLiveReadiness,
 };

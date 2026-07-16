@@ -12,6 +12,7 @@ const {
   createTopUpIntent,
   getIntentById,
   confirmIntent,
+  getGoLiveReadiness,
 } = require('./paymentService');
 
 const router = express.Router();
@@ -50,6 +51,7 @@ router.get('/', (req, res) => {
       </section>
       <aside class="wallet-side">
         ${renderAuditInfo()}
+        ${renderGoLiveReadiness(getGoLiveReadiness(state))}
       </aside>
     </div>
     ${wallet ? renderTransactions(state.transactions) : ''}
@@ -139,6 +141,44 @@ router.post('/checkout/:intentId/confirm', (req, res) => {
       <div class="error">${escHtml(err.message)}</div>
       <a href="${escHtml(intent.returnPath || '/wallet')}" class="btn">← Terug</a>
     `));
+  }
+});
+
+router.get('/api/status', (req, res) => {
+  const state = readPaymentState();
+  res.json({
+    environment: 'test',
+    wallet: state.wallet,
+    pendingTopUps: state.topUpIntents.filter((entry) => entry.status === 'pending_confirmation'),
+    pendingPayments: state.paymentIntents.filter((entry) => entry.status === 'pending_confirmation'),
+    recentTransactions: state.transactions.slice(0, 10),
+    goLiveReadiness: getGoLiveReadiness(state),
+  });
+});
+
+router.get('/api/intents/:intentId', (req, res) => {
+  const intent = getIntentById(req.params.intentId);
+  if (!intent) {
+    return res.status(404).json({ error: 'Betalingsintentie niet gevonden.' });
+  }
+  res.json({ intent });
+});
+
+router.post('/api/intents/:intentId/confirm', (req, res) => {
+  const intent = getIntentById(req.params.intentId);
+  if (!intent) {
+    return res.status(404).json({ error: 'Betalingsintentie niet gevonden.' });
+  }
+
+  try {
+    const result = confirmIntent(intent.id, req.body.decision);
+    res.json({
+      success: true,
+      intent: result.intent || getIntentById(intent.id),
+      goLiveReadiness: getGoLiveReadiness(),
+    });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ error: err.message });
   }
 });
 
@@ -266,12 +306,13 @@ function renderTransactions(transactions) {
 function renderAuditInfo() {
   return `
     <section class="wallet-card wallet-info-card">
-      <h2>Veiligheidsregels</h2>
+      <h2>Veiligheidsregels &amp; API</h2>
       <ul class="wallet-rules">
         <li>Geen opslag van volledige kaartnummers, CVC of itsme-geheimen.</li>
-        <li>Alle bevestigingen lopen via een server-side sandbox autorisatiestap.</li>
+        <li>Alle bevestigingen lopen via een server-side testautorisatiestap.</li>
         <li>Top-ups en betalingen worden gelogd in een audittrail.</li>
       </ul>
+      <p class="install-hint" style="margin-top:1rem">API endpoints: <code>/wallet/api/status</code> en <code>/wallet/api/intents/:id/confirm</code>.</p>
     </section>
   `;
 }
@@ -291,6 +332,22 @@ function renderAuditTable(entries) {
             </tr>`).join('') : '<tr><td colspan="3" class="empty">Nog geen audit-events.</td></tr>'}
           </tbody>
         </table>
+      </div>
+    </section>
+  `;
+}
+
+function renderGoLiveReadiness(readiness) {
+  return `
+    <section class="wallet-card wallet-info-card">
+      <h2>Live-goedkeuring status</h2>
+      <p class="wallet-copy">Resultaat van de betaal- en deploymentchecks voordat livegang kan worden bevestigd.</p>
+      <div class="badge ${readiness.canGoLive ? 'badge-approved' : 'badge-pending'}">${readiness.canGoLive ? 'Klaar voor live' : 'Nog niet live'}</div>
+      <div class="wallet-readiness-list">
+        ${readiness.checks.map((check) => `<div class="wallet-readiness-item">
+          <strong>${check.passed ? '✅' : '⚠️'} ${escHtml(check.label)}</strong>
+          <p>${escHtml(check.detail)}</p>
+        </div>`).join('')}
       </div>
     </section>
   `;
