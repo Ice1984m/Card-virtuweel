@@ -43,7 +43,7 @@ Wilt u een directe APK-downloadlink in de app tonen, stel dan een publieke URL i
 APK_DOWNLOAD_URL=https://voorbeeld.nl/downloads/Card-virtuweel.apk
 ```
 
-Daarna verschijnt op `/` en `/install` een knop **Download APK** plus de volledige APK-link. Zonder deze variabele blijft de PWA-installatie via Chrome zichtbaar als fallback.
+Daarna verschijnt op `/` en `/install` een **Download APK** knop die via `/download/apk` het bestand rechtstreeks naar het apparaat doorstuurt, plus de volledige bronlink. Zonder deze variabele blijft de PWA-installatie via Chrome zichtbaar als fallback.
 
 ## Installatie
 

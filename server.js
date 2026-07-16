@@ -3,6 +3,7 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const { Readable } = require('stream');
 
 const { layout } = require('./routes/layout');
 const { escHtml } = require('./routes/helpers');
@@ -32,6 +33,42 @@ app.get('/', (req, res) => {
 
 app.get('/install', (req, res) => {
   res.send(installPage());
+});
+
+app.get('/download/apk', async (req, res) => {
+  if (!APK_DOWNLOAD_URL) {
+    res.status(404).send('Er is nog geen APK-downloadlink ingesteld.');
+    return;
+  }
+
+  try {
+    const upstream = await fetch(APK_DOWNLOAD_URL);
+
+    if (!upstream.ok) {
+      res.status(502).send(`APK-download is tijdelijk niet beschikbaar (${upstream.status}).`);
+      return;
+    }
+
+    const filename = path.basename(new URL(APK_DOWNLOAD_URL).pathname) || 'Card-virtuweel.apk';
+    const contentType = upstream.headers.get('content-type') || 'application/vnd.android.package-archive';
+    const contentLength = upstream.headers.get('content-length');
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    if (contentLength) {
+      res.setHeader('Content-Length', contentLength);
+    }
+
+    if (!upstream.body) {
+      res.status(502).send('APK-download bevat geen bestand.');
+      return;
+    }
+
+    Readable.fromWeb(upstream.body).pipe(res);
+  } catch (err) {
+    res.status(502).send('APK-download is tijdelijk niet beschikbaar.');
+  }
 });
 
 app.use((req, res) => {
@@ -91,12 +128,7 @@ function homePage() {
         <a href="/bridges" class="btn btn-activate">▶ Activeer</a>
       </div>
       <div class="card-wrapper">
-        <a href="https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk" class="card" download>
-          <span class="icon">📲</span>
-          <h2>Download APK</h2>
-          <p>Installeer de Card-virtuweel app direct op uw Android-apparaat.</p>
-        </a>
-        <a href="https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk" class="btn btn-activate" download>⬇ Download APK</a>
+        ${renderHomeDownloadCard()}
       </div>
     </div>
   `);
@@ -119,9 +151,9 @@ function renderInstallPanel(compact) {
   const downloadBlock = APK_DOWNLOAD_URL
     ? `
         <div class="install-actions">
-          <a href="${escHtml(APK_DOWNLOAD_URL)}" class="btn btn-install" target="_blank" rel="noopener noreferrer">⬇ Download APK</a>
+          <a href="/download/apk" class="btn btn-install" download>⬇ Download APK</a>
         </div>
-        <p class="install-hint">Open de link op uw Android-apparaat en bevestig daarna de installatie van het APK-bestand.</p>
+        <p class="install-hint">Tik op de knop om het APK-bestand rechtstreeks op uw Android-apparaat te downloaden en bevestig daarna de installatie.</p>
         <p class="install-link mono">${escHtml(APK_DOWNLOAD_URL)}</p>
       `
     : `
@@ -159,6 +191,28 @@ function notFoundPage() {
       <a href="/" class="btn">← Terug naar home</a>
     </div>
   `);
+}
+
+function renderHomeDownloadCard() {
+  if (!APK_DOWNLOAD_URL) {
+    return `
+        <a href="/install" class="card">
+          <span class="icon">📲</span>
+          <h2>App installeren</h2>
+          <p>Open de installatiepagina voor PWA-installatie of een latere APK-download.</p>
+        </a>
+        <a href="/install" class="btn btn-activate">▶ Installatie openen</a>
+      `;
+  }
+
+  return `
+      <a href="/download/apk" class="card" download>
+        <span class="icon">📲</span>
+        <h2>Download APK</h2>
+        <p>Installeer de Card-virtuweel app direct op uw Android-apparaat.</p>
+      </a>
+      <a href="/download/apk" class="btn btn-activate" download>⬇ Download APK</a>
+    `;
 }
 
 function safeExternalUrl(value) {
