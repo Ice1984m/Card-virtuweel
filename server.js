@@ -249,8 +249,8 @@ function sanitizeDownloadFilename(urlPathname) {
   }
 
   const rawName = path.basename(decodedPathname) || 'Card-virtuweel.apk';
-  const cleanedName = rawName.replace(/[^a-zA-Z0-9._-]/g, '');
-  return cleanedName.toLowerCase().endsWith('.apk') ? cleanedName.toLowerCase() : 'Card-virtuweel.apk';
+  const normalizedName = rawName.toLowerCase().replace(/[^a-z0-9._-]/g, '');
+  return /^[a-z0-9_-]+\.apk$/.test(normalizedName) ? normalizedName : 'card-virtuweel.apk';
 }
 
 const APK_DOWNLOAD_URL = safeExternalUrl(process.env.APK_DOWNLOAD_URL);
