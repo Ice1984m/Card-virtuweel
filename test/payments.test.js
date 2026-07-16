@@ -89,3 +89,17 @@ test('invoice generation and payment marks invoice as paid', () => {
   assert.equal(paidInvoice.paymentIntentId, intent.id);
   assert.ok(paidInvoice.paidAt);
 });
+
+test('invoice due date cannot be in the past', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'card-virtueel-payments-'));
+  const paymentFile = path.join(tempDir, 'payments.json');
+  const service = loadService(paymentFile);
+
+  assert.throws(() => {
+    service.createInvoice({
+      description: 'Verlopen factuur',
+      amount: 10,
+      dueDate: '2000-01-01',
+    });
+  }, /Vervaldatum mag niet in het verleden liggen/);
+});

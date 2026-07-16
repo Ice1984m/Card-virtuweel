@@ -180,6 +180,19 @@ function createTopUpIntent(amountInput) {
   return intent;
 }
 
+function generateUniqueInvoiceNumber(state) {
+  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const timestampPart = Date.now().toString(36).toUpperCase();
+    const randomPart = randomInt(100000, 1000000);
+    const number = `INV-${datePart}-${timestampPart}-${randomPart}`;
+    if (!state.invoices.some((entry) => entry.number === number)) {
+      return number;
+    }
+  }
+  return `INV-${datePart}-${randomUUID().slice(0, 8).toUpperCase()}`;
+}
+
 function createInvoice(input) {
   const state = readPaymentState();
   const payload = input || {};
@@ -207,15 +220,19 @@ function createInvoice(input) {
       err.statusCode = 400;
       throw err;
     }
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    if (parsedDueDate.getTime() < startOfToday.getTime()) {
+      const err = new Error('Vervaldatum mag niet in het verleden liggen.');
+      err.statusCode = 400;
+      throw err;
+    }
     dueDate = parsedDueDate.toISOString();
   }
 
-  const timestampPart = Date.now().toString(36).toUpperCase();
-  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const randomPart = randomInt(100000, 1000000);
   const invoice = {
     id: randomUUID(),
-    number: `INV-${datePart}-${timestampPart}-${randomPart}`,
+    number: generateUniqueInvoiceNumber(state),
     description,
     amount,
     currency: 'EUR',
