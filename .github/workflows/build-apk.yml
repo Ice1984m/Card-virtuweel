@@ -1,0 +1,196 @@
+name: Bouw & Publiceer APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      host_url:
+        description: 'Gedeployede app-URL (bijv. https://mijnapp.onrender.com)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Java instellen
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Node.js instellen
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Android SDK instellen
+        uses: android-actions/setup-android@v3
+
+      - name: Bubblewrap CLI installeren
+        run: npm install -g @bubblewrap/cli
+
+      - name: Bepaal app-URL
+        id: app_url
+        run: |
+          URL="${{ inputs.host_url }}"
+          if [ -z "$URL" ]; then
+            URL="${{ secrets.HOST_URL }}"
+          fi
+          if [ -z "$URL" ]; then
+            URL="https://card-virtuweel.onrender.com"
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          HOST=$(echo "$URL" | sed 's|https\?://||' | cut -d'/' -f1)
+          echo "host=$HOST" >> "$GITHUB_OUTPUT"
+
+      - name: Bepaal release-tag
+        id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: twa-manifest.json aanmaken
+        run: |
+          node - <<'EOF'
+          const fs = require("fs");
+          const hostUrl = process.env.HOST_URL;
+          const host    = process.env.HOST;
+          const tagName = process.env.TAG_NAME || "latest";
+          const semver  = tagName.replace(/^v/, "") || "1.0.0";
+          const [major, minor, patch] = semver.split(".").map(Number);
+          const versionCode = (major || 1) * 10000 + (minor || 0) * 100 + (patch || 0);
+          const pkgVersion  = JSON.parse(fs.readFileSync("package.json")).version || semver;
+          const manifest = {
+            packageId: "com.ice1984m.cardvirtuweel",
+            host,
+            name: "Card-virtuweel",
+            launcherName: "Virtuweel",
+            display: "standalone",
+            orientation: "portrait",
+            themeColor: "#2563eb",
+            backgroundColor: "#f1f5f9",
+            startUrl: "/",
+            iconUrl: `${hostUrl}/icons/icon-512.png`,
+            maskableIconUrl: `${hostUrl}/icons/icon-512.png`,
+            shortcuts: [],
+            generatorApp: "bubblewrap-cli",
+            webManifestUrl: `${hostUrl}/manifest.json`,
+            isChromeOSOnly: false,
+            isMetaQuest: false,
+            enableNotifications: false,
+            appVersionName: pkgVersion,
+            appVersionCode: versionCode,
+            signingKey: { path: "./android.keystore", alias: "card-virtuweel" },
+            signingKeyPassphrase: "",
+            keyStorePassphrase: "",
+            enableSiteSettingsShortcut: true,
+            minSdkVersion: 19,
+            targetSdkVersion: 34,
+            navigationColor: "#2563eb",
+            navigationColorDark: "#1d4ed8",
+            navigationDividerColor: "#2563eb",
+            navigationDividerColorDark: "#1d4ed8",
+            features: {},
+            alphaDependencies: { enabled: false },
+            fallbackType: "customtabs"
+          };
+          fs.writeFileSync("twa-manifest.json", JSON.stringify(manifest, null, 2));
+          console.log(`twa-manifest.json aangemaakt: host=${host} versie=${pkgVersion} (code ${versionCode})`);
+          EOF
+        env:
+          HOST_URL: ${{ steps.app_url.outputs.url }}
+          HOST: ${{ steps.app_url.outputs.host }}
+          TAG_NAME: ${{ steps.tag.outputs.name }}
+
+      - name: Keystore aanmaken of herstellen
+        run: |
+          if [ -n "$KEYSTORE_BASE64_SECRET" ]; then
+            echo "$KEYSTORE_BASE64_SECRET" | base64 -d > android.keystore
+            STORE_PASS="$KEYSTORE_PASS_SECRET"
+            KEY_PASS="$KEYSTORE_PASS_SECRET"
+          else
+            echo "::notice::Geen KEYSTORE_BASE64 secret gevonden – tijdelijk willekeurig wachtwoord wordt aangemaakt. Voeg KEYSTORE_BASE64 en KEYSTORE_PASS toe voor een stabiele release-sleutel."
+            STORE_PASS="$(openssl rand -base64 32)"
+            KEY_PASS="$STORE_PASS"
+            keytool -genkeypair \
+              -dname "CN=Card-virtuweel, OU=Mobile, O=Card-virtuweel, L=Amsterdam, S=NH, C=NL" \
+              -alias card-virtuweel \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -keystore android.keystore \
+              -storepass "$STORE_PASS" \
+              -keypass "$KEY_PASS" 2>/dev/null
+          fi
+          echo "::add-mask::$STORE_PASS"
+          echo "STORE_PASS=$STORE_PASS" >> "$GITHUB_ENV"
+          echo "KEY_PASS=$KEY_PASS"     >> "$GITHUB_ENV"
+        env:
+          KEYSTORE_BASE64_SECRET: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASS_SECRET: ${{ secrets.KEYSTORE_PASS }}
+
+      - name: Wachtwoorden in twa-manifest.json invullen
+        run: |
+          node - <<'EOF'
+          const fs = require("fs");
+          const m = JSON.parse(fs.readFileSync("twa-manifest.json"));
+          m.signingKeyPassphrase = process.env.KEY_PASS;
+          m.keyStorePassphrase   = process.env.STORE_PASS;
+          fs.writeFileSync("twa-manifest.json", JSON.stringify(m, null, 2));
+          EOF
+        env:
+          STORE_PASS: ${{ env.STORE_PASS }}
+          KEY_PASS: ${{ env.KEY_PASS }}
+
+      - name: APK bouwen met Bubblewrap
+        run: bubblewrap build --skipPwaValidation
+
+      - name: SHA-256 vingerafdruk ophalen
+        id: fingerprint
+        run: |
+          FP=$(keytool -list -v -keystore android.keystore \
+                 -alias card-virtuweel \
+                 -storepass "$STORE_PASS" 2>/dev/null \
+               | grep "SHA256:" | head -1 | awk '{print $2}')
+          echo "sha256=$FP" >> "$GITHUB_OUTPUT"
+          echo "::notice::SHA-256 vingerafdruk voor assetlinks.json: $FP"
+
+      - name: APK hernoemen
+        run: |
+          APK=$(find . -name "*.apk" | grep -v "unaligned" | head -1)
+          cp "$APK" Card-virtuweel.apk
+
+      - name: GitHub Release aanmaken en APK uploaden
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: Card-virtuweel ${{ steps.tag.outputs.name }}
+          body: |
+            ## Card-virtuweel Android APK
+
+            Download `Card-virtuweel.apk` en installeer hem op uw Android-apparaat.
+
+            ### Installatie
+            1. Zet **Onbekende bronnen** aan in Android-instellingen → Beveiliging.
+            2. Open het gedownloade APK-bestand en bevestig de installatie.
+
+            ### SHA-256 vingerafdruk (voor assetlinks.json)
+            ```
+            ${{ steps.fingerprint.outputs.sha256 }}
+            ```
+            Voeg deze waarde toe als `ASSETLINKS_SHA256`-omgevingsvariabele op de server voor naadloze TWA-integratie.
+          files: Card-virtuweel.apk
+          fail_on_unmatched_files: true
