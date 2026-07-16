@@ -49,7 +49,7 @@ app.get('/download/apk', async (req, res) => {
       return;
     }
 
-    const filename = path.basename(new URL(APK_DOWNLOAD_URL).pathname) || 'Card-virtuweel.apk';
+    const filename = sanitizeDownloadFilename(new URL(APK_DOWNLOAD_URL).pathname);
     const contentType = upstream.headers.get('content-type') || 'application/vnd.android.package-archive';
     const contentLength = upstream.headers.get('content-length');
 
@@ -67,6 +67,7 @@ app.get('/download/apk', async (req, res) => {
 
     Readable.fromWeb(upstream.body).pipe(res);
   } catch (err) {
+    console.error('APK-download mislukt:', err);
     res.status(502).send('APK-download is tijdelijk niet beschikbaar.');
   }
 });
@@ -151,7 +152,7 @@ function renderInstallPanel(compact) {
   const downloadBlock = APK_DOWNLOAD_URL
     ? `
         <div class="install-actions">
-          <a href="/download/apk" class="btn btn-install" download>⬇ Download APK</a>
+          <a href="/download/apk" class="btn btn-install" download="Card-virtuweel.apk">⬇ Download APK</a>
         </div>
         <p class="install-hint">Tik op de knop om het APK-bestand rechtstreeks op uw Android-apparaat te downloaden en bevestig daarna de installatie.</p>
         <p class="install-link mono">${escHtml(APK_DOWNLOAD_URL)}</p>
@@ -206,12 +207,12 @@ function renderHomeDownloadCard() {
   }
 
   return `
-      <a href="/download/apk" class="card" download>
+      <a href="/download/apk" class="card" download="Card-virtuweel.apk">
         <span class="icon">📲</span>
         <h2>Download APK</h2>
         <p>Installeer de Card-virtuweel app direct op uw Android-apparaat.</p>
       </a>
-      <a href="/download/apk" class="btn btn-activate" download>⬇ Download APK</a>
+      <a href="/download/apk" class="btn btn-activate" download="Card-virtuweel.apk">⬇ Download APK</a>
     `;
 }
 
@@ -226,6 +227,12 @@ function safeExternalUrl(value) {
   } catch (err) {
     return '';
   }
+}
+
+function sanitizeDownloadFilename(urlPathname) {
+  const rawName = path.basename(urlPathname) || 'Card-virtuweel.apk';
+  const cleanedName = rawName.replace(/[^a-zA-Z0-9._-]/g, '');
+  return cleanedName || 'Card-virtuweel.apk';
 }
 
 const APK_DOWNLOAD_URL = safeExternalUrl(process.env.APK_DOWNLOAD_URL);
