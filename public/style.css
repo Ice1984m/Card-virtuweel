@@ -79,7 +79,7 @@ body {
   flex-direction: column;
   gap: .6rem;
 }
-a.card {
+a.card, div.card {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -92,9 +92,9 @@ a.card {
   flex: 1;
 }
 a.card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.12); }
-a.card .icon { font-size: 2.5rem; display: block; margin-bottom: .75rem; }
-a.card h2 { font-size: 1.15rem; margin-bottom: .4rem; color: var(--primary); }
-a.card p { color: var(--muted); font-size: .9rem; }
+a.card .icon, div.card .icon { font-size: 2.5rem; display: block; margin-bottom: .75rem; }
+a.card h2, div.card h2 { font-size: 1.15rem; margin-bottom: .4rem; color: var(--primary); }
+a.card p, div.card p { color: var(--muted); font-size: .9rem; }
 .btn-activate {
   display: block;
   width: 100%;
