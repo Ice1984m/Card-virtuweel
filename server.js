@@ -55,7 +55,7 @@ app.get('/download/apk', async (req, res) => {
     const contentLength = upstream.headers.get('content-length');
 
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${escapeHeaderValue(filename)}"`);
 
     if (contentLength) {
       res.setHeader('Content-Length', contentLength);
@@ -72,7 +72,7 @@ app.get('/download/apk', async (req, res) => {
       if (!res.headersSent) {
         res.status(502).send('APK-download is tijdelijk niet beschikbaar.');
       } else {
-        res.destroy(streamErr);
+        res.end();
       }
     });
     downloadStream.pipe(res);
@@ -248,9 +248,17 @@ function sanitizeDownloadFilename(urlPathname) {
     decodedPathname = urlPathname;
   }
 
+  if (decodedPathname.includes('..') || path.isAbsolute(decodedPathname)) {
+    return 'card-virtuweel.apk';
+  }
+
   const rawName = path.basename(decodedPathname) || 'Card-virtuweel.apk';
   const normalizedName = rawName.toLowerCase().replace(/[^a-z0-9._-]/g, '');
-  return /^[a-z0-9_-]+\.apk$/.test(normalizedName) ? normalizedName : 'card-virtuweel.apk';
+  return /^[a-z0-9._-]+\.apk$/.test(normalizedName) ? normalizedName : 'card-virtuweel.apk';
+}
+
+function escapeHeaderValue(value) {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
 const APK_DOWNLOAD_URL = safeExternalUrl(process.env.APK_DOWNLOAD_URL);
