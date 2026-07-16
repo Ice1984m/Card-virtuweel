@@ -3,4 +3,5 @@
     <string name="app_name">Card-virtuweel</string>
     <string name="splash_subtitle">Certificaten &amp; Licenties</string>
     <string name="app_url">https://card-virtuweel.onrender.com</string>
+    <string name="update_app">App bijwerken</string>
 </resources>
