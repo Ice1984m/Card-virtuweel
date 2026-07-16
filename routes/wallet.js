@@ -233,6 +233,37 @@ router.get('/api/status', (req, res) => {
   });
 });
 
+// APK wallet sync endpoint – returns a compact snapshot for Android synchronisation
+router.get('/api/sync', (req, res) => {
+  const state = readPaymentState();
+  res.json({
+    syncedAt: new Date().toISOString(),
+    environment: 'sandbox',
+    wallet: state.wallet
+      ? {
+          holderName: state.wallet.holderName,
+          maskedPan: state.wallet.maskedPan,
+          provider: state.wallet.provider,
+          providerCardToken: state.wallet.providerCardToken,
+          balance: state.wallet.availableBalance,
+          currency: 'EUR',
+          status: state.wallet.status,
+          maskedBankAccount: state.wallet.maskedBankAccount || null,
+          settings: state.wallet.settings || {},
+          lastTopUpAt: state.wallet.lastTopUpAt || null,
+        }
+      : null,
+    openInvoices: state.invoices.filter((entry) => entry.status === 'open').length,
+    recentTransactions: state.transactions.slice(0, 5).map((t) => ({
+      type: t.type,
+      amount: t.amount,
+      status: t.status,
+      description: t.description,
+      createdAt: t.createdAt,
+    })),
+  });
+});
+
 router.get('/api/invoices', (req, res) => {
   const state = readPaymentState();
   res.json({

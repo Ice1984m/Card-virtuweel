@@ -4,7 +4,7 @@ const express = require('express');
 const path = require('path');
 const { layout } = require('./layout');
 const { readJson, writeJson, formatPrice, escHtml } = require('./helpers');
-const { readPaymentState, getGoLiveReadiness } = require('./paymentService');
+const { readPaymentState, getGoLiveReadiness, injectSandboxCredit } = require('./paymentService');
 const { sha256, merkleRoot } = require('./onion');
 
 const router = express.Router();
@@ -35,7 +35,8 @@ router.get('/', (req, res) => {
         <td>${escHtml(c.issuer)}</td>
         <td>${escHtml(c.expiry)}</td>
         <td class="action-cell">
-          <form method="POST" action="/admin/certificates/${escHtml(c.id)}/approve" style="display:inline">
+          <form method="POST" action="/admin/certificates/${escHtml(c.id)}/approve" style="display:inline;vertical-align:middle">
+            <input type="number" name="reloadAmount" min="0" max="10000" step="0.01" placeholder="€ herladen" title="Optioneel: wallet herlaadbedrag bij goedkeuring" style="width:7rem;margin-right:.25rem;font-size:.85rem">
             <button class="btn btn-small btn-approve">✔ Goedkeuren</button>
           </form>
           <form method="POST" action="/admin/certificates/${escHtml(c.id)}/reject" style="display:inline">
@@ -211,7 +212,19 @@ function paymentAuditTable(entries) {
 router.post('/certificates/:id/approve', (req, res) => {
   const certs = readJson(CERTS_FILE);
   const cert = certs.find(c => c.id === req.params.id);
-  if (cert) { cert.status = 'approved'; writeJson(CERTS_FILE, certs); }
+  if (cert) {
+    cert.status = 'approved';
+    writeJson(CERTS_FILE, certs);
+  }
+  const reloadAmount = Number.parseFloat(req.body.reloadAmount);
+  if (cert && Number.isFinite(reloadAmount) && reloadAmount > 0 && reloadAmount <= 10000) {
+    try {
+      injectSandboxCredit(reloadAmount);
+      return res.redirect(`/admin?flash=Certificaat+goedgekeurd+en+€${reloadAmount.toFixed(2)}+aan+wallet+toegevoegd`);
+    } catch (err) {
+      console.warn('[admin] Wallet credit injectie mislukt bij certificaatgoedkeuring:', err.message);
+    }
+  }
   res.redirect('/admin?flash=Certificaat+goedgekeurd');
 });
 
