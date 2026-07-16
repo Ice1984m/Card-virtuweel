@@ -48,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
                     try {
                         startActivity(browserIntent);
                     } catch (ActivityNotFoundException | SecurityException err) {
-                        Log.w(TAG, "Kon externe link niet openen: " + uri, err);
+                        Log.w(TAG, "Could not open external link: " + uri, err);
                     }
                 }
                 return true;
