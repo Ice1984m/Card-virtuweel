@@ -301,6 +301,7 @@ td.action-cell form { margin-right: .3rem; }
 /* ─── Payment ─── */
 .payment-section { margin-top: 2rem; }
 .payment-section h2 { font-size: 1.2rem; margin-bottom: 1rem; }
+.payment-cta-form { margin-top: 1rem; }
 .amount-display {
   font-size: 1.5rem;
   font-weight: 700;
@@ -439,6 +440,7 @@ footer {
   .page-header { flex-direction: column; align-items: flex-start; }
   .post-meta { flex-direction: column; gap: .25rem; }
   .install-panel { padding: 1.25rem; }
+  .wallet-layout { grid-template-columns: 1fr; }
 }
 
 /* ─── Payment tabs ─── */
@@ -552,6 +554,100 @@ footer {
   border-radius: 6px;
   font-size: .88rem;
   margin-bottom: 1.25rem;
+}
+
+.wallet-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.wallet-main,
+.wallet-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.wallet-card,
+.checkout-card,
+.wallet-inline-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+}
+.wallet-card h2,
+.checkout-card h2 {
+  margin-bottom: .75rem;
+}
+.wallet-copy {
+  color: var(--muted);
+  margin-bottom: 1rem;
+}
+.wallet-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+.wallet-summary-item {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .9rem 1rem;
+}
+.wallet-label,
+.wallet-inline-title {
+  display: block;
+  color: var(--muted);
+  font-size: .85rem;
+  margin-bottom: .25rem;
+}
+.wallet-balance {
+  color: var(--success);
+  font-size: 1.3rem;
+}
+.wallet-inline-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.wallet-info-card {
+  height: fit-content;
+}
+.wallet-rules {
+  padding-left: 1.15rem;
+  color: var(--text);
+}
+.wallet-rules li + li {
+  margin-top: .5rem;
+}
+.checkout-summary {
+  display: grid;
+  gap: .9rem;
+  margin: 1rem 0 1.5rem;
+}
+.checkout-summary div {
+  display: grid;
+  gap: .2rem;
+  padding: .8rem 1rem;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.checkout-summary dt {
+  color: var(--muted);
+  font-size: .82rem;
+}
+.checkout-summary dd {
+  margin: 0;
+  font-weight: 600;
+}
+.checkout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
 }
 
 /* ─── Browser ─── */

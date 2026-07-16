@@ -4,6 +4,7 @@ const express = require('express');
 const path = require('path');
 const { layout } = require('./layout');
 const { readJson, writeJson, formatPrice, escHtml } = require('./helpers');
+const { readPaymentState } = require('./paymentService');
 const { sha256, merkleRoot } = require('./onion');
 
 const router = express.Router();
@@ -17,9 +18,12 @@ const POSTS_FILE = path.join(__dirname, '../data/posts.json');
 router.get('/', (req, res) => {
   const certs = readJson(CERTS_FILE);
   const posts = readJson(POSTS_FILE);
+  const payments = readPaymentState();
 
   const pendingCerts = certs.filter(c => c.status === 'pending');
   const pendingPosts = posts.filter(p => p.status === 'pending_approval');
+  const pendingTopUps = payments.topUpIntents.filter(entry => entry.status === 'pending_confirmation');
+  const pendingPayments = payments.paymentIntents.filter(entry => entry.status === 'pending_confirmation');
 
   const certRows = pendingCerts.length === 0
     ? '<tr><td colspan="5" class="empty">Geen certificaten in behandeling.</td></tr>'
@@ -95,6 +99,16 @@ router.get('/', (req, res) => {
       <h2>Overzicht alle posts</h2>
       ${allPostsTable(posts)}
     </section>
+
+    <section class="admin-section">
+      <h2>Sandbox wallet overzicht</h2>
+      ${paymentSummary(payments, pendingTopUps.length, pendingPayments.length)}
+    </section>
+
+    <section class="admin-section">
+      <h2>Recente betaal-auditlog</h2>
+      ${paymentAuditTable(payments.auditLog)}
+    </section>
   `));
 });
 
@@ -129,6 +143,60 @@ function allPostsTable(posts) {
         <td>€${escHtml(formatPrice(p.price))}</td>
         <td><span class="badge ${POST_STATUS_CLASS[p.status] || ''}">${POST_STATUS_LABEL[p.status] || escHtml(p.status)}</span></td>
       </tr>`).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+function paymentSummary(payments, pendingTopUps, pendingPayments) {
+  if (!payments.wallet) {
+    return '<p class="empty">Nog geen sandbox wallet aangemaakt.</p>';
+  }
+
+  return `
+    <div class="routing-stats-grid">
+      <div class="stat-card">
+        <div class="stat-value">€${escHtml(formatPrice(payments.wallet.balance))}</div>
+        <div class="stat-label">Beschikbaar saldo</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${pendingTopUps}</div>
+        <div class="stat-label">Top-ups in behandeling</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${pendingPayments}</div>
+        <div class="stat-label">Betalingen in behandeling</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${payments.transactions.length}</div>
+        <div class="stat-label">Totaal transacties</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Kaarthouder</th><th>Kaart</th><th>Provider</th><th>Token</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>${escHtml(payments.wallet.holderName)}</td>
+            <td><code class="mono">${escHtml(payments.wallet.maskedPan)}</code></td>
+            <td>${escHtml(payments.wallet.provider)}</td>
+            <td><code class="mono">${escHtml(payments.wallet.providerCardToken)}</code></td>
+            <td><span class="badge badge-approved">Sandbox actief</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function paymentAuditTable(entries) {
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>Tijdstip</th><th>Type</th><th>Bericht</th></tr></thead>
+    <tbody>
+      ${entries.length ? entries.slice(0, 15).map((entry) => `<tr>
+        <td>${escHtml(new Date(entry.timestamp).toLocaleString('nl-NL'))}</td>
+        <td>${escHtml(entry.type)}</td>
+        <td>${escHtml(entry.message)}</td>
+      </tr>`).join('') : '<tr><td colspan="3" class="empty">Nog geen betaal-events.</td></tr>'}
     </tbody>
   </table></div>`;
 }
