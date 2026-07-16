@@ -35,17 +35,20 @@
     deferredPrompt.userChoice.then(function () {
       deferredPrompt = null;
       hidePwaButtons();
+    }).catch(function (err) {
+      console.warn('PWA installatie mislukt:', err);
     });
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    // Attach click handler to all PWA install buttons (present and future)
+    // Attach click handler to PWA install buttons present at load time
     document.querySelectorAll('.btn-pwa-install').forEach(function (btn) {
       btn.addEventListener('click', triggerInstall);
     });
 
     // Check if already installed as standalone
     if (window.matchMedia('(display-mode: standalone)').matches) {
+      hidePwaButtons();
       document.querySelectorAll('.install-panel').forEach(function (panel) {
         var note = document.createElement('p');
         note.className = 'install-hint';
