@@ -24,6 +24,7 @@ function layout(title, content) {
       <a href="/posts">Posts</a>
       <a href="/bridges">Routing</a>
       <a href="/browser">Browser</a>
+      <a href="/apk">APK</a>
       <a href="/admin">Admin</a>
     </div>
   </nav>
