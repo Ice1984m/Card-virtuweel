@@ -706,6 +706,22 @@ function resetWallet() {
   writePaymentState(defaultState());
 }
 
+function addDevCredit(amount) {
+  const state = readPaymentState();
+  requireWallet(state);
+  const rounded = Math.round(Number(amount) * 100) / 100;
+  if (!Number.isFinite(rounded) || rounded <= 0 || rounded > 9999) {
+    const err = new Error('Ongeldig testtegoedbedrag (max €9999).');
+    err.statusCode = 400;
+    throw err;
+  }
+  state.wallet.balance = Number(state.wallet.balance || 0) + rounded;
+  state.wallet.availableBalance = Number(state.wallet.availableBalance || 0) + rounded;
+  addAudit(state, 'dev.credit_injection', `Developer: €${rounded.toFixed(2)} testtegoed toegevoegd.`, { amount: rounded });
+  writePaymentState(state);
+  return state.wallet;
+}
+
 module.exports = {
   MIN_TOP_UP_AMOUNT,
   MAX_TOP_UP_AMOUNT,
@@ -726,4 +742,5 @@ module.exports = {
   getGoLiveReadiness,
   generateApprovalReport,
   resetWallet,
+  addDevCredit,
 };

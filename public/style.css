@@ -913,3 +913,124 @@ footer {
 }
 .merkle-label { font-weight: 600; font-size: .88rem; color: #713f12; white-space: nowrap; }
 .merkle-root-value { font-size: .8rem; color: #1e293b; word-break: break-all; }
+
+/* ─── Update banner ─── */
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  background: #eff6ff;
+  border-bottom: 2px solid #bfdbfe;
+  padding: .6rem 1.5rem;
+  font-size: .9rem;
+  color: #1e40af;
+  flex-wrap: wrap;
+}
+.update-dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 1rem;
+  padding: 0 .25rem;
+  line-height: 1;
+}
+.update-dismiss:hover { color: var(--text); }
+
+/* ─── Sandbox panel ─── */
+.sandbox-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.sandbox-main,
+.sandbox-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.sandbox-keygen-form,
+.sandbox-credit-form {
+  max-width: 480px;
+}
+@media (max-width: 700px) {
+  .sandbox-layout { grid-template-columns: 1fr; }
+}
+
+/* ─── Sandbox AI chat ─── */
+.sandbox-chat {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #f8fafc;
+}
+.sandbox-chat-log {
+  min-height: 180px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+.chat-msg {
+  max-width: 82%;
+  padding: .6rem .9rem;
+  border-radius: 12px;
+  font-size: .9rem;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.chat-bot {
+  background: #dbeafe;
+  color: #1e40af;
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+.chat-user {
+  background: var(--primary);
+  color: #fff;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+.sandbox-chat-bar {
+  display: flex;
+  gap: .5rem;
+  padding: .6rem;
+  border-top: 1px solid var(--border);
+  background: #fff;
+}
+.sandbox-chat-bar input {
+  flex: 1;
+  padding: .5rem .85rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: .9rem;
+  background: #f8fafc;
+  color: var(--text);
+  transition: border-color .15s;
+}
+.sandbox-chat-bar input:focus { outline: none; border-color: var(--primary); background: #fff; }
+
+/* ─── New API key one-time banner ─── */
+.new-key-banner {
+  background: #fefce8;
+  border: 2px solid #ca8a04;
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  color: #713f12;
+}
+.new-key-value {
+  margin-top: .75rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .75rem 1rem;
+  word-break: break-all;
+}
+.new-key-value code {
+  font-size: .88rem;
+  color: var(--text);
+}

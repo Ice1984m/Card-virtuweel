@@ -1,0 +1,8 @@
+{
+  "apiKeys": [],
+  "devOptions": {
+    "requireApiKey": false,
+    "autoConfirm": false,
+    "logLevel": "info"
+  }
+}
