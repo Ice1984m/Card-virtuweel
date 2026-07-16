@@ -199,21 +199,40 @@ function apkNotFoundPage(status) {
   `);
 }
 
-function checkUrlHead(url, callback) {
+function checkUrlHead(url, callback, depth) {
+  if ((depth || 0) > 5) {
+    callback(null);
+    return;
+  }
   try {
     const parsedUrl = new URL(url);
+    if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+      callback(null);
+      return;
+    }
     const lib = parsedUrl.protocol === 'https:' ? https : http;
+    const port = parsedUrl.port ? parseInt(parsedUrl.port, 10) : (parsedUrl.protocol === 'https:' ? 443 : 80);
     const req = lib.request(
-      { method: 'HEAD', hostname: parsedUrl.hostname, path: parsedUrl.pathname + parsedUrl.search, headers: { 'User-Agent': 'Card-virtuweel-server' } },
+      { method: 'HEAD', hostname: parsedUrl.hostname, port, path: parsedUrl.pathname + parsedUrl.search, headers: { 'User-Agent': 'Card-virtuweel-server' } },
       (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          checkUrlHead(res.headers.location, callback);
+          let location;
+          try {
+            location = new URL(res.headers.location, url).toString();
+          } catch (_) {
+            callback(null);
+            return;
+          }
+          checkUrlHead(location, callback, (depth || 0) + 1);
         } else {
           callback(res.statusCode);
         }
       }
     );
-    req.on('error', () => callback(null));
+    req.on('error', (err) => {
+      console.warn('[checkUrlHead] Request error for', url, err.message);
+      callback(null);
+    });
     req.setTimeout(5000, () => { req.destroy(); callback(null); });
     req.end();
   } catch (_) {
