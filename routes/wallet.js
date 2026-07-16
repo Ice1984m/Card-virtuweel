@@ -9,6 +9,7 @@ const {
   DAILY_TOP_UP_LIMIT,
   readPaymentState,
   createSandboxWallet,
+  setWalletBankAccount,
   createInvoice,
   createInvoicePaymentIntent,
   createTopUpIntent,
@@ -49,7 +50,10 @@ router.get('/', (req, res) => {
     <div class="wallet-layout">
       <section class="wallet-main">
         ${wallet ? renderWalletSummary(wallet) : renderCardRequest()}
+        ${wallet ? renderWalletMenu() : ''}
+        ${wallet ? renderBankAccountForm(wallet) : ''}
         ${wallet ? renderTopUpForm() : ''}
+        ${wallet ? renderInvoiceManager(state) : ''}
         ${wallet ? renderPendingIntents(state) : ''}
       </section>
       <aside class="wallet-side">
@@ -82,6 +86,45 @@ router.post('/topups', (req, res) => {
   } catch (err) {
     res.status(err.statusCode || 500).send(layout('Top-up fout', `
       <div class="page-header"><h1>Top-up fout</h1></div>
+      <div class="error">${escHtml(err.message)}</div>
+      <a href="/wallet" class="btn">← Terug naar wallet</a>
+    `));
+  }
+});
+
+router.post('/bank-account', (req, res) => {
+  try {
+    setWalletBankAccount(req.body.iban);
+    res.redirect('/wallet?flash=Rekeningnummer+gekoppeld+aan+wallet');
+  } catch (err) {
+    res.status(err.statusCode || 500).send(layout('Rekeningnummer fout', `
+      <div class="page-header"><h1>Rekeningnummer fout</h1></div>
+      <div class="error">${escHtml(err.message)}</div>
+      <a href="/wallet" class="btn">← Terug naar wallet</a>
+    `));
+  }
+});
+
+router.post('/invoices', (req, res) => {
+  try {
+    createInvoice(req.body);
+    res.redirect('/wallet?flash=Factuur+aangemaakt');
+  } catch (err) {
+    res.status(err.statusCode || 500).send(layout('Factuur fout', `
+      <div class="page-header"><h1>Factuur fout</h1></div>
+      <div class="error">${escHtml(err.message)}</div>
+      <a href="/wallet" class="btn">← Terug naar wallet</a>
+    `));
+  }
+});
+
+router.post('/invoices/:invoiceId/pay', (req, res) => {
+  try {
+    const intent = createInvoicePaymentIntent(req.params.invoiceId);
+    res.redirect(`/wallet/checkout/${encodeURIComponent(intent.id)}`);
+  } catch (err) {
+    res.status(err.statusCode || 500).send(layout('Factuurbetaling fout', `
+      <div class="page-header"><h1>Factuurbetaling fout</h1></div>
       <div class="error">${escHtml(err.message)}</div>
       <a href="/wallet" class="btn">← Terug naar wallet</a>
     `));
@@ -151,7 +194,13 @@ router.get('/api/status', (req, res) => {
   const state = readPaymentState();
   res.json({
     environment: 'test',
-    wallet: state.wallet,
+    wallet: state.wallet
+      ? {
+          ...state.wallet,
+          linkedBankAccount: state.wallet.maskedBankAccount || null,
+        }
+      : null,
+    availableBalance: state.wallet ? state.wallet.availableBalance : 0,
     pendingTopUps: state.topUpIntents.filter((entry) => entry.status === 'pending_confirmation'),
     pendingPayments: state.paymentIntents.filter((entry) => entry.status === 'pending_confirmation'),
     openInvoices: state.invoices.filter((entry) => entry.status === 'open'),
@@ -183,6 +232,21 @@ router.post('/api/invoices/:invoiceId/pay', (req, res) => {
       success: true,
       intent,
       checkoutUrl: `/wallet/checkout/${encodeURIComponent(intent.id)}`,
+    });
+
+    router.post('/api/wallet/bank-account', (req, res) => {
+      try {
+        const wallet = setWalletBankAccount(req.body.iban);
+        res.json({
+          success: true,
+          wallet: {
+            ...wallet,
+            linkedBankAccount: wallet.maskedBankAccount || null,
+          },
+        });
+      } catch (err) {
+        res.status(err.statusCode || 500).json({ error: err.message });
+      }
     });
   } catch (err) {
     res.status(err.statusCode || 500).json({ error: err.message });
@@ -260,20 +324,57 @@ function renderWalletSummary(wallet) {
         </div>
         <div class="wallet-summary-item">
           <span class="wallet-label">Saldo</span>
-          <strong class="wallet-balance">€${escHtml(formatPrice(wallet.balance))}</strong>
+          <strong class="wallet-balance">€${escHtml(formatPrice(wallet.availableBalance || wallet.balance || 0))}</strong>
         </div>
         <div class="wallet-summary-item">
           <span class="wallet-label">Kaarthouder</span>
           <strong>${escHtml(wallet.holderName)}</strong>
+        </div>
+        <div class="wallet-summary-item">
+          <span class="wallet-label">Rekeningnummer</span>
+          <strong class="mono">${escHtml(wallet.maskedBankAccount || 'Nog niet gekoppeld')}</strong>
         </div>
       </div>
     </section>
   `;
 }
 
-function renderTopUpForm() {
+function renderWalletMenu() {
   return `
     <section class="wallet-card">
+      <h2>Wallet menu</h2>
+      <div class="form-actions">
+        <a href="#rekening" class="btn btn-secondary">Rekening koppelen</a>
+        <a href="#opladen" class="btn btn-secondary">Saldo opladen</a>
+        <a href="#facturen" class="btn btn-secondary">Facturen beheren</a>
+        <a href="#transacties" class="btn btn-secondary">Transacties bekijken</a>
+      </div>
+    </section>
+  `;
+}
+
+function renderBankAccountForm(wallet) {
+  return `
+    <section id="rekening" class="wallet-card">
+      <h2>Rekeningnummer toevoegen</h2>
+      <p class="wallet-copy">Koppel een IBAN om walletbetalingen te beheren. Alleen gemaskeerde weergave wordt in het overzicht getoond.</p>
+      <form method="POST" action="/wallet/bank-account" class="form-card">
+        <div class="form-group">
+          <label for="iban">IBAN</label>
+          <input id="iban" name="iban" type="text" placeholder="BE00 0000 0000 0000" value="" required>
+        </div>
+        ${wallet.maskedBankAccount ? `<p class="install-hint">Huidig gekoppeld: <span class="mono">${escHtml(wallet.maskedBankAccount)}</span></p>` : ''}
+        <div class="form-actions">
+          <button type="submit" class="btn">Rekening opslaan</button>
+        </div>
+      </form>
+    </section>
+  `;
+}
+
+function renderTopUpForm() {
+  return `
+    <section id="opladen" class="wallet-card">
       <h2>Kaart opladen</h2>
       <p class="wallet-copy">Alleen sandbox bedragen zijn toegestaan. Daglimiet: €${escHtml(formatPrice(DAILY_TOP_UP_LIMIT))}.</p>
       <form method="POST" action="/wallet/topups" class="form-card">
@@ -285,6 +386,48 @@ function renderTopUpForm() {
           <button type="submit" class="btn btn-pay">Top-up starten</button>
         </div>
       </form>
+    </section>
+  `;
+}
+
+function renderInvoiceManager(state) {
+  const openInvoices = state.invoices.filter((entry) => entry.status === 'open');
+  const latestInvoices = state.invoices.slice(0, 10);
+  return `
+    <section id="facturen" class="wallet-card">
+      <h2>Facturen en betalingen</h2>
+      <p class="wallet-copy">Maak facturen aan en start direct een sandbox betaalautorisatie.</p>
+      <form method="POST" action="/wallet/invoices" class="form-card">
+        <div class="form-group">
+          <label for="description">Omschrijving</label>
+          <input id="description" name="description" type="text" placeholder="Omschrijving factuur" required>
+        </div>
+        <div class="form-group">
+          <label for="invoiceAmount">Bedrag (€)</label>
+          <input id="invoiceAmount" name="amount" type="number" min="0.01" max="1000" step="0.01" required>
+        </div>
+        <div class="form-group">
+          <label for="dueDate">Vervaldatum (optioneel)</label>
+          <input id="dueDate" name="dueDate" type="date">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-pay">Factuur aanmaken</button>
+        </div>
+      </form>
+      <div class="table-wrap wallet-table-spacing">
+        <table>
+          <thead><tr><th>Factuur</th><th>Bedrag</th><th>Status</th><th>Actie</th></tr></thead>
+          <tbody>
+            ${latestInvoices.length ? latestInvoices.map((entry) => `<tr>
+              <td><strong>${escHtml(entry.number)}</strong><br><span class="wallet-copy">${escHtml(entry.description)}</span></td>
+              <td>€${escHtml(formatPrice(entry.amount))}</td>
+              <td><span class="badge ${entry.status === 'paid' ? 'badge-approved' : 'badge-pending'}">${escHtml(entry.status)}</span></td>
+              <td>${entry.status === 'open' ? `<form method="POST" action="/wallet/invoices/${encodeURIComponent(entry.id)}/pay"><button type="submit" class="btn btn-small btn-pay">Betaal</button></form>` : 'Betaald'}</td>
+            </tr>`).join('') : '<tr><td colspan="4" class="empty">Nog geen facturen.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+      ${openInvoices.length ? `<p class="install-hint">${escHtml(String(openInvoices.length))} open factuur/facturen klaar voor betaling.</p>` : ''}
     </section>
   `;
 }
@@ -320,7 +463,7 @@ function renderPendingIntents(state) {
 
 function renderTransactions(transactions) {
   return `
-    <section class="wallet-card">
+    <section id="transacties" class="wallet-card">
       <h2>Transactiehistorie</h2>
       <div class="table-wrap">
         <table>
@@ -349,7 +492,7 @@ function renderAuditInfo() {
         <li>Alle bevestigingen lopen via een server-side testautorisatiestap.</li>
         <li>Top-ups en betalingen worden gelogd in een audittrail.</li>
       </ul>
-      <p class="install-hint" style="margin-top:1rem">API endpoints: <code>/wallet/api/status</code>, <code>/wallet/api/invoices</code>, <code>/wallet/api/invoices/:id/pay</code>, <code>/wallet/api/approvals</code> en <code>/wallet/api/intents/:id/confirm</code>.</p>
+      <p class="install-hint wallet-hint-spacing">API endpoints: <code>/wallet/api/status</code>, <code>/wallet/api/invoices</code>, <code>/wallet/api/invoices/:id/pay</code>, <code>/wallet/api/wallet/bank-account</code>, <code>/wallet/api/approvals</code> en <code>/wallet/api/intents/:id/confirm</code>.</p>
     </section>
   `;
 }

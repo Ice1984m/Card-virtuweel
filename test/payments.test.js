@@ -103,3 +103,39 @@ test('invoice due date cannot be in the past', () => {
     });
   }, /Vervaldatum mag niet in het verleden liggen/);
 });
+
+test('wallet can link a valid bank account and stores masked value', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'card-virtueel-payments-'));
+  const paymentFile = path.join(tempDir, 'payments.json');
+  const service = loadService(paymentFile);
+
+  service.createSandboxWallet('IBAN Tester');
+  const wallet = service.setWalletBankAccount('BE27 7390 2703 1473');
+  const state = service.readPaymentState();
+
+  assert.equal(wallet.linkedBankAccount, 'BE27739027031473');
+  assert.equal(wallet.maskedBankAccount, 'BE27 **** **** 1473');
+  assert.equal(state.wallet.maskedBankAccount, 'BE27 **** **** 1473');
+});
+
+test('wallet bank account rejects invalid iban format', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'card-virtueel-payments-'));
+  const paymentFile = path.join(tempDir, 'payments.json');
+  const service = loadService(paymentFile);
+
+  service.createSandboxWallet('IBAN Tester');
+  assert.throws(() => {
+    service.setWalletBankAccount('123');
+  }, /geldig IBAN-rekeningnummer/);
+});
+
+test('wallet bank account rejects iban with invalid checksum', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'card-virtueel-payments-'));
+  const paymentFile = path.join(tempDir, 'payments.json');
+  const service = loadService(paymentFile);
+
+  service.createSandboxWallet('IBAN Tester');
+  assert.throws(() => {
+    service.setWalletBankAccount('BE27 7390 2703 1474');
+  }, /geldig IBAN-rekeningnummer/);
+});
