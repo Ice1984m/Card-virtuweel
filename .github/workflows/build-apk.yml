@@ -33,10 +33,9 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Generate Gradle wrapper
+      - name: Ensure Gradle wrapper is executable
         run: |
           cd android
-          gradle wrapper --gradle-version 8.4
           chmod +x gradlew
 
       - name: Build debug APK

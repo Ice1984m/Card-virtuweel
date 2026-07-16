@@ -45,7 +45,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/install', (req, res) => {
-  res.send(installPage());
+  res.send(installPage(req.query));
 });
 
 app.get('/download/apk', (req, res) => {
@@ -53,7 +53,8 @@ app.get('/download/apk', (req, res) => {
     if (status >= 200 && status < 400) {
       res.redirect(302, APK_DOWNLOAD_URL);
     } else {
-      res.status(404).send(apkNotFoundPage(status));
+      const statusParam = Number.isInteger(status) ? `&status=${status}` : '';
+      res.redirect(302, `/install?apk=unavailable${statusParam}`);
     }
   });
 });
@@ -128,17 +129,30 @@ function homePage() {
   `);
 }
 
-function installPage() {
+function installPage(query) {
+  const rawStatusCode = query?.status;
+  const parsedStatusCode = rawStatusCode ? Number.parseInt(rawStatusCode, 10) : null;
+  const statusCode = Number.isInteger(parsedStatusCode) ? parsedStatusCode : null;
+  const apkUnavailable = query?.apk === 'unavailable';
+  const unavailableReason = statusCode !== null ? `HTTP ${statusCode}` : null;
   return layout('Card-virtuweel – App installeren', `
     <div class="page-header">
       <h1>📲 App installeren</h1>
       <a href="/" class="btn btn-secondary">← Terug naar home</a>
     </div>
-    ${renderInstallPanel(false)}
+    ${renderInstallPanel(false, { apkUnavailable, unavailableReason })}
   `);
 }
 
-function renderInstallPanel(compact) {
+function renderInstallPanel(compact, state) {
+  const fallbackNotice = state?.apkUnavailable
+    ? `
+        <div class="install-fallback">
+          <strong>⚠️ APK tijdelijk niet beschikbaar.</strong>
+          <p>De directe download werkt nu niet${state.unavailableReason ? ` (${escHtml(state.unavailableReason)})` : ''}. Probeer het opnieuw of installeer via de PWA-stappen hieronder.</p>
+        </div>
+      `
+    : '';
   const installStep = APK_DOWNLOAD_URL
     ? 'Tik op "Download APK" en open het gedownload bestand.'
     : 'Gebruik "Toevoegen aan startscherm" in Chrome zolang er nog geen APK-link is ingesteld.';
@@ -166,6 +180,7 @@ function renderInstallPanel(compact) {
         </div>
         ${compact ? '<a href="/install" class="btn btn-secondary btn-small">Installatie openen</a>' : ''}
       </div>
+      ${fallbackNotice}
       ${downloadBlock}
       <ol class="install-steps">
         <li>Open deze pagina op uw Android-telefoon.</li>
@@ -183,21 +198,6 @@ function notFoundPage() {
     <div class="hero">
       <h1>404 – Pagina niet gevonden</h1>
       <a href="/" class="btn">← Terug naar home</a>
-    </div>
-  `);
-}
-
-function apkNotFoundPage(status) {
-  return layout('APK niet beschikbaar', `
-    <div class="hero">
-      <h1>📲 APK niet beschikbaar</h1>
-      <p>De APK kon niet worden gevonden (HTTP ${status || '?'}).</p>
-      <p>De APK-release is mogelijk nog niet gepubliceerd. Probeer het later opnieuw of installeer de app als PWA via Chrome.</p>
-      <p class="mono">APK URL: <a href="${escHtml(APK_DOWNLOAD_URL)}" target="_blank" rel="noopener noreferrer">${escHtml(APK_DOWNLOAD_URL)}</a></p>
-      <div style="margin-top:1.5rem">
-        <a href="/install" class="btn">📦 Installatie-instructies</a>
-        <a href="/" class="btn btn-secondary">← Terug naar home</a>
-      </div>
     </div>
   `);
 }
