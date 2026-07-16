@@ -361,8 +361,9 @@ function renderBankAccountForm(wallet) {
       <form method="POST" action="/wallet/bank-account" class="form-card">
         <div class="form-group">
           <label for="iban">IBAN</label>
-          <input id="iban" name="iban" type="text" placeholder="BE00 0000 0000 0000" value="${escHtml(wallet.linkedBankAccount || '')}" required>
+          <input id="iban" name="iban" type="text" placeholder="BE00 0000 0000 0000" value="" required>
         </div>
+        ${wallet.maskedBankAccount ? `<p class="install-hint">Huidig gekoppeld: <span class="mono">${escHtml(wallet.maskedBankAccount)}</span></p>` : ''}
         <div class="form-actions">
           <button type="submit" class="btn">Rekening opslaan</button>
         </div>

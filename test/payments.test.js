@@ -128,3 +128,14 @@ test('wallet bank account rejects invalid iban format', () => {
     service.setWalletBankAccount('123');
   }, /geldig IBAN-rekeningnummer/);
 });
+
+test('wallet bank account rejects iban with invalid checksum', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'card-virtueel-payments-'));
+  const paymentFile = path.join(tempDir, 'payments.json');
+  const service = loadService(paymentFile);
+
+  service.createSandboxWallet('IBAN Tester');
+  assert.throws(() => {
+    service.setWalletBankAccount('BE27 7390 2703 1474');
+  }, /geldig IBAN-rekeningnummer/);
+});
