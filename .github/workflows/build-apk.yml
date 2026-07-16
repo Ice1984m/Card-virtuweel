@@ -3,8 +3,13 @@ name: Build APK
 on:
   push:
     tags:
-      - 'v*'
+      - '*'
   workflow_dispatch:
+    inputs:
+      upload_tag:
+        description: 'Release tag to upload the APK to (leave empty to skip release upload)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -47,7 +52,7 @@ jobs:
           name: Card-virtuweel-apk
           path: Card-virtuweel.apk
 
-      - name: Create GitHub Release
+      - name: Create or update GitHub Release (tag push)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
@@ -62,3 +67,10 @@ jobs:
             3. Open het APK-bestand en kies **Installeren**
 
             > Dit is een debug-build. De app opent de Card-virtuweel webserver via WebView.
+
+      - name: Upload APK to existing release (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.upload_tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.upload_tag }}
+          files: Card-virtuweel.apk
