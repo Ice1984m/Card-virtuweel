@@ -124,6 +124,8 @@ a.card p { color: var(--muted); font-size: .9rem; }
 .btn-secondary:hover { background: #334155; }
 .btn-pay { background: var(--success); font-size: 1rem; padding: .7rem 2rem; }
 .btn-pay:hover { background: #15803d; }
+.btn-install { background: #0f766e; }
+.btn-install:hover { background: #115e59; }
 .btn-small { padding: .3rem .75rem; font-size: .8rem; }
 .btn-approve { background: var(--success); }
 .btn-approve:hover { background: #15803d; }
@@ -318,6 +320,67 @@ td.action-cell form { margin-right: .3rem; }
 .payment-blocked p { color: #7c2d12; margin-bottom: .5rem; }
 .status-msg { font-size: .9rem; }
 
+/* ─── Install panel ─── */
+.install-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  margin: 0 auto 2rem;
+}
+.install-panel-compact {
+  max-width: 900px;
+}
+.install-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.install-panel-header h2 {
+  color: var(--primary);
+  margin-bottom: .35rem;
+}
+.install-panel-header p {
+  color: var(--muted);
+}
+.install-actions {
+  margin-bottom: .75rem;
+}
+.install-steps {
+  padding-left: 1.2rem;
+  margin: 1rem 0;
+  color: var(--text);
+}
+.install-steps li + li {
+  margin-top: .45rem;
+}
+.install-hint {
+  color: var(--muted);
+  font-size: .92rem;
+}
+.install-link {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .85rem 1rem;
+  margin-bottom: 1rem;
+}
+.install-fallback {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  color: #7c2d12;
+  margin-bottom: 1rem;
+}
+.install-fallback p {
+  margin-top: .4rem;
+}
+
 /* ─── Admin ─── */
 .admin-section {
   margin-bottom: 2.5rem;
@@ -375,6 +438,7 @@ footer {
   .form-row { grid-template-columns: 1fr; }
   .page-header { flex-direction: column; align-items: flex-start; }
   .post-meta { flex-direction: column; gap: .25rem; }
+  .install-panel { padding: 1.25rem; }
 }
 
 /* ─── Payment tabs ─── */
