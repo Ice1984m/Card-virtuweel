@@ -2,9 +2,25 @@
 
 Een Node.js/Express webapplicatie voor het beheren van certificaten, licenties en posts met een goedkeuringsworkflow en **NFC-betaling**.
 
-## 📥 Download
+## ⚡ Snel starten
 
+### APK direct downloaden
+
+[![Download APK](https://img.shields.io/badge/📲%20Download-APK-blue?style=for-the-badge)](https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk)
 [![Download Source Code](https://img.shields.io/badge/📥%20Download-Source%20Code-brightgreen?style=for-the-badge&logo=github)](https://github.com/Ice1984m/Card-virtuweel/archive/refs/heads/main.zip)
+
+1. Open de APK-link op uw Android-apparaat
+2. Tik op **Download APK**
+3. Open het bestand en bevestig de installatie
+
+### Lokaal bouwen en starten
+
+```bash
+npm install
+npm start
+```
+
+De app start daarna op **http://localhost:4242**.
 
 ## Functionaliteiten
 
@@ -39,7 +55,7 @@ De NFC-betaalfunctie maakt gebruik van de **[Web NFC API](https://developer.mozi
 2. Tik op het menu (⋮) → "Toevoegen aan startscherm"
 3. De app wordt geïnstalleerd en is offline beschikbaar
 
-## APK-download tonen
+## Eigen APK-link tonen in de app
 
 Wilt u een directe APK-downloadlink in de app tonen, stel dan een publieke URL in via:
 
@@ -49,7 +65,7 @@ APK_DOWNLOAD_URL=https://example.com/downloads/Card-virtuweel.apk
 
 Daarna verschijnt op `/` en `/install` een knop **Download APK** plus de volledige APK-link. Zonder deze variabele blijft de PWA-installatie via Chrome zichtbaar als fallback.
 
-### Snel downloaden
+### Snelle links
 
 - [Download APK](https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk)
 - [README](https://github.com/Ice1984m/Card-virtuweel#readme)
