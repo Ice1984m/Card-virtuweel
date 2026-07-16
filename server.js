@@ -42,14 +42,15 @@ app.get('/download/apk', async (req, res) => {
   }
 
   try {
-    const upstream = await fetch(APK_DOWNLOAD_URL);
+    const downloadUrl = new URL(APK_DOWNLOAD_URL);
+    const upstream = await fetch(downloadUrl);
 
     if (!upstream.ok) {
       res.status(502).send(`APK-download is tijdelijk niet beschikbaar (${upstream.status}).`);
       return;
     }
 
-    const filename = sanitizeDownloadFilename(new URL(APK_DOWNLOAD_URL).pathname);
+    const filename = sanitizeDownloadFilename(downloadUrl.pathname);
     const contentType = upstream.headers.get('content-type') || 'application/vnd.android.package-archive';
     const contentLength = upstream.headers.get('content-length');
 
@@ -65,7 +66,17 @@ app.get('/download/apk', async (req, res) => {
       return;
     }
 
-    Readable.fromWeb(upstream.body).pipe(res);
+    const downloadStream = Readable.fromWeb(upstream.body);
+    downloadStream.on('error', (streamErr) => {
+      console.error('APK-download streamfout:', streamErr);
+      if (!res.headersSent) {
+        res.status(502).send('APK-download is tijdelijk niet beschikbaar.');
+        return;
+      }
+
+      res.destroy(streamErr);
+    });
+    downloadStream.pipe(res);
   } catch (err) {
     console.error('APK-download mislukt:', err);
     res.status(502).send('APK-download is tijdelijk niet beschikbaar.');
@@ -232,7 +243,7 @@ function safeExternalUrl(value) {
 function sanitizeDownloadFilename(urlPathname) {
   const rawName = path.basename(urlPathname) || 'Card-virtuweel.apk';
   const cleanedName = rawName.replace(/[^a-zA-Z0-9._-]/g, '');
-  return cleanedName || 'Card-virtuweel.apk';
+  return cleanedName.toLowerCase().endsWith('.apk') ? cleanedName : 'Card-virtuweel.apk';
 }
 
 const APK_DOWNLOAD_URL = safeExternalUrl(process.env.APK_DOWNLOAD_URL);
