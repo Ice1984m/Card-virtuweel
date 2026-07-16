@@ -8,6 +8,8 @@ Beheer certificaten, licenties en posts met goedkeuringsworkflow en een **sandbo
 
 [![Download APK](https://img.shields.io/badge/⬇%20Download%20APK-installeer%20direct-brightgreen?style=for-the-badge)](https://github.com/Ice1984m/Card-virtuweel/releases/download/card-virtuweel-apk/Card-virtuweel.apk)
 
+**Laatste update (16 juli 2026):** nieuwe APK-release beschikbaar via de downloadknop hierboven.
+
 **3 stappen, klaar:**
 
 1. Tik op de knop hierboven op uw Android-telefoon → APK wordt gedownload
