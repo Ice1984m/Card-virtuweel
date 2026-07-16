@@ -403,6 +403,30 @@ function getGoLiveReadiness(stateInput) {
   };
 }
 
+function generateApprovalReport(stateInput) {
+  const readiness = getGoLiveReadiness(stateInput);
+  const renderConfigured = readiness.checks.find((entry) => entry.key === 'render_deployment_configured');
+
+  return {
+    generatedAt: new Date().toISOString(),
+    environment: 'sandbox-dev',
+    approvalStatus: readiness.canGoLive ? 'ready_for_live' : 'pending_external_approval',
+    goLiveReadiness: readiness,
+    render: {
+      configured: Boolean(renderConfigured && renderConfigured.passed),
+      source: 'render.yaml',
+      approval: renderConfigured ? renderConfigured.detail : 'Render check niet beschikbaar.',
+    },
+    nextActions: readiness.canGoLive
+      ? ['Plan productie-uitrol via erkende provider en Render deploy.']
+      : [
+          'Werk openstaande betaalbevestigingen af.',
+          'Regel externe provider-, KYC/AML- en productiecertificaat-goedkeuring.',
+          'Controleer Render live-omgeving en webhookconfiguratie.',
+        ],
+  };
+}
+
 module.exports = {
   MIN_TOP_UP_AMOUNT,
   MAX_TOP_UP_AMOUNT,
@@ -414,4 +438,5 @@ module.exports = {
   getIntentById,
   confirmIntent,
   getGoLiveReadiness,
+  generateApprovalReport,
 };

@@ -13,6 +13,7 @@ const {
   getIntentById,
   confirmIntent,
   getGoLiveReadiness,
+  generateApprovalReport,
 } = require('./paymentService');
 
 const router = express.Router();
@@ -164,6 +165,10 @@ router.get('/api/intents/:intentId', (req, res) => {
   res.json({ intent });
 });
 
+router.get('/api/approvals', (req, res) => {
+  res.json(generateApprovalReport(readPaymentState()));
+});
+
 router.post('/api/intents/:intentId/confirm', (req, res) => {
   const intent = getIntentById(req.params.intentId);
   if (!intent) {
@@ -312,7 +317,7 @@ function renderAuditInfo() {
         <li>Alle bevestigingen lopen via een server-side testautorisatiestap.</li>
         <li>Top-ups en betalingen worden gelogd in een audittrail.</li>
       </ul>
-      <p class="install-hint" style="margin-top:1rem">API endpoints: <code>/wallet/api/status</code> en <code>/wallet/api/intents/:id/confirm</code>.</p>
+      <p class="install-hint" style="margin-top:1rem">API endpoints: <code>/wallet/api/status</code>, <code>/wallet/api/approvals</code> en <code>/wallet/api/intents/:id/confirm</code>.</p>
     </section>
   `;
 }
