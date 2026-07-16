@@ -8,6 +8,7 @@ function layout(title, content) {
     { href: '/bridges',      label: 'Routing' },
     { href: '/browser',      label: 'Browser' },
     { href: '/admin',        label: 'Admin' },
+    { href: '/sandbox',      label: '🛠️ Sandbox' },
   ];
   const navHtml = navLinks.map(({ href, label }) =>
     `<a href="${href}">${label}</a>`

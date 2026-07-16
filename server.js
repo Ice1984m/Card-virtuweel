@@ -14,6 +14,7 @@ const adminRouter = require('./routes/admin');
 const browserRouter = require('./routes/browser');
 const bridgesRouter = require('./routes/bridges');
 const walletRouter = require('./routes/wallet');
+const sandboxRouter = require('./routes/sandbox');
 
 const app = express();
 const PORT = process.env.PORT || 4242;
@@ -41,6 +42,7 @@ app.use('/admin', adminRouter);
 app.use('/browser', browserRouter);
 app.use('/bridges', bridgesRouter);
 app.use('/wallet', walletRouter);
+app.use('/sandbox', sandboxRouter);
 
 app.get('/', (req, res) => {
   res.send(homePage());
@@ -132,6 +134,14 @@ function homePage() {
         <a href="/download/apk" class="btn btn-activate">⬇ APK downloaden</a>
         <p class="mono">APK URL: <a href="${APK_DOWNLOAD_URL}" target="_blank" rel="noopener noreferrer">${APK_DOWNLOAD_URL}</a></p>
         <p class="mono">README URL: <a href="${README_URL}" target="_blank" rel="noopener noreferrer">${README_URL}</a></p>
+      </div>
+      <div class="card-wrapper">
+        <a href="/sandbox" class="card">
+          <span class="icon">🛠️</span>
+          <h2>Sandbox Ontwikkelaarstools</h2>
+          <p>API-sleutels, wallet credit injectie, AI auto-setup en APK synchronisatie voor ontwikkelaars.</p>
+        </a>
+        <a href="/sandbox" class="btn btn-activate">🛠️ Developer paneel</a>
       </div>
     </div>
   `);

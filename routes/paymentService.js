@@ -706,6 +706,78 @@ function resetWallet() {
   writePaymentState(defaultState());
 }
 
+const MAX_SANDBOX_CREDIT_INJECT = 10000;
+
+function injectSandboxCredit(amount) {
+  const parsed = normalizeAmount(amount);
+  if (parsed > MAX_SANDBOX_CREDIT_INJECT) {
+    const err = new Error(`Maximaal injectionsbedrag is €${MAX_SANDBOX_CREDIT_INJECT.toFixed(2)}.`);
+    err.statusCode = 400;
+    throw err;
+  }
+  const state = readPaymentState();
+  requireWallet(state);
+  state.wallet.balance = Math.round((Number(state.wallet.balance || 0) + parsed) * 100) / 100;
+  state.wallet.availableBalance = state.wallet.balance;
+  const ref = `sandbox_inject_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  pushTransaction(state, {
+    id: randomUUID(),
+    type: 'topup',
+    status: 'confirmed',
+    amount: parsed,
+    currency: 'EUR',
+    createdAt: new Date().toISOString(),
+    reference: ref,
+    intentId: null,
+    description: 'Sandbox developer credit injectie',
+  });
+  addAudit(state, 'sandbox.credit.injected', `Sandbox credit van €${parsed.toFixed(2)} geïnjecteerd door ontwikkelaarstools.`, {
+    amount: parsed,
+    reference: ref,
+  });
+  writePaymentState(state);
+  return state.wallet;
+}
+
+function autoSetupSandboxWallet(holderName) {
+  const state = readPaymentState();
+  if (!state.wallet) {
+    createSandboxWallet(holderName || 'AI Sandbox Gebruiker');
+  }
+  const freshState = readPaymentState();
+  freshState.wallet.settings = {
+    labelNaam: 'AI Sandbox Kaart',
+    dagelijksUitgavelimiet: MAX_DAILY_SPENDING_LIMIT,
+    meldingenIngeschakeld: true,
+    autoBevestigOpladen: true,
+    aiAssistentUrl: freshState.wallet.settings ? freshState.wallet.settings.aiAssistentUrl : '',
+  };
+  freshState.wallet.updatedAt = new Date().toISOString();
+  addAudit(freshState, 'sandbox.ai.setup', 'AI heeft sandbox wallet automatisch geconfigureerd.', {
+    walletId: freshState.wallet.id,
+  });
+  writePaymentState(freshState);
+
+  const newState = readPaymentState();
+  newState.wallet.balance = Math.round((Number(newState.wallet.balance || 0) + 100) * 100) / 100;
+  newState.wallet.availableBalance = newState.wallet.balance;
+  const ref = `ai_setup_${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  pushTransaction(newState, {
+    id: randomUUID(),
+    type: 'topup',
+    status: 'confirmed',
+    amount: 100,
+    currency: 'EUR',
+    createdAt: new Date().toISOString(),
+    reference: ref,
+    intentId: null,
+    description: 'AI auto-setup startkrediet (€100)',
+  });
+  addAudit(newState, 'sandbox.ai.credit', 'AI startkrediet van €100 automatisch toegevoegd.', { reference: ref });
+  writePaymentState(newState);
+  return newState.wallet;
+}
+
 module.exports = {
   MIN_TOP_UP_AMOUNT,
   MAX_TOP_UP_AMOUNT,
@@ -726,4 +798,6 @@ module.exports = {
   getGoLiveReadiness,
   generateApprovalReport,
   resetWallet,
+  injectSandboxCredit,
+  autoSetupSandboxWallet,
 };
