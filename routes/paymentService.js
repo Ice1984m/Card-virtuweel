@@ -10,6 +10,8 @@ const MAX_PURCHASE_AMOUNT = 1000;
 const DAILY_TOP_UP_LIMIT = 2000;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 6;
+const MAX_INVOICE_NUMBER_GENERATION_ATTEMPTS = 10;
+const MAX_STORED_INVOICES = 500;
 
 function defaultState() {
   return {
@@ -182,7 +184,7 @@ function createTopUpIntent(amountInput) {
 
 function generateUniqueInvoiceNumber(state) {
   const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  for (let attempt = 0; attempt < 10; attempt += 1) {
+  for (let attempt = 0; attempt < MAX_INVOICE_NUMBER_GENERATION_ATTEMPTS; attempt += 1) {
     const timestampPart = Date.now().toString(36).toUpperCase();
     const randomPart = randomInt(100000, 1000000);
     const number = `INV-${datePart}-${timestampPart}-${randomPart}`;
@@ -244,7 +246,7 @@ function createInvoice(input) {
   };
 
   state.invoices.unshift(invoice);
-  state.invoices = state.invoices.slice(0, 500);
+  state.invoices = state.invoices.slice(0, MAX_STORED_INVOICES);
   addAudit(state, 'invoice.created', `Factuur ${invoice.number} aangemaakt voor €${amount.toFixed(2)}.`, {
     invoiceId: invoice.id,
     invoiceNumber: invoice.number,
