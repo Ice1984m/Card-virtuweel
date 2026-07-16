@@ -8,6 +8,7 @@ const MIN_TOP_UP_AMOUNT = 5;
 const MAX_TOP_UP_AMOUNT = 500;
 const MAX_PURCHASE_AMOUNT = 1000;
 const DAILY_TOP_UP_LIMIT = 2000;
+const MAX_DAILY_SPENDING_LIMIT = 500;
 
 const DEFAULT_WALLET_SETTINGS = {
   labelNaam: '',
@@ -642,8 +643,8 @@ function updateWalletSettings(input) {
   const labelNaam = String(payload.labelNaam !== undefined ? payload.labelNaam : existing.labelNaam).trim().slice(0, 80);
 
   const limitInput = Number.parseFloat(payload.dagelijksUitgavelimiet);
-  if (!Number.isFinite(limitInput) || limitInput < 1 || limitInput > MAX_TOP_UP_AMOUNT) {
-    const err = new Error(`Dagelijks uitgavelimiet moet tussen €1,00 en €${MAX_TOP_UP_AMOUNT.toFixed(2)} liggen.`);
+  if (!Number.isFinite(limitInput) || limitInput < 1 || limitInput > MAX_DAILY_SPENDING_LIMIT) {
+    const err = new Error(`Dagelijks uitgavelimiet moet tussen €1,00 en €${MAX_DAILY_SPENDING_LIMIT.toFixed(2)} liggen.`);
     err.statusCode = 400;
     throw err;
   }
@@ -705,6 +706,7 @@ module.exports = {
   MIN_TOP_UP_AMOUNT,
   MAX_TOP_UP_AMOUNT,
   DAILY_TOP_UP_LIMIT,
+  MAX_DAILY_SPENDING_LIMIT,
   DEFAULT_WALLET_SETTINGS,
   readPaymentState,
   createSandboxWallet,

@@ -7,6 +7,7 @@ const {
   MIN_TOP_UP_AMOUNT,
   MAX_TOP_UP_AMOUNT,
   DAILY_TOP_UP_LIMIT,
+  MAX_DAILY_SPENDING_LIMIT,
   DEFAULT_WALLET_SETTINGS,
   readPaymentState,
   createSandboxWallet,
@@ -381,7 +382,7 @@ function renderWalletSettings(wallet) {
   return `
     <section id="instellingen" class="wallet-card">
       <h2>⚙️ Wallet instellingen</h2>
-      <p class="wallet-copy">Stel standaardwaarden in die automatisch actief zijn vanaf het moment dat de wallet live gaat.</p>
+      <p class="wallet-copy">Pas standaardinstellingen aan die automatisch actief zijn vanaf het moment dat de wallet live gaat.</p>
       <form method="POST" action="/wallet/settings" class="form-card">
         <div class="form-group">
           <label for="labelNaam">Wallet label / naam</label>
@@ -389,8 +390,8 @@ function renderWalletSettings(wallet) {
         </div>
         <div class="form-group">
           <label for="dagelijksUitgavelimiet">Dagelijks uitgavelimiet (€)</label>
-          <input id="dagelijksUitgavelimiet" name="dagelijksUitgavelimiet" type="number" min="1" max="${MAX_TOP_UP_AMOUNT}" step="0.01" value="${escHtml(String(s.dagelijksUitgavelimiet))}" required>
-          <small class="install-hint">Maximaal dagelijks uitgavelimiet: €${escHtml(String(MAX_TOP_UP_AMOUNT))}.</small>
+          <input id="dagelijksUitgavelimiet" name="dagelijksUitgavelimiet" type="number" min="1" max="${MAX_DAILY_SPENDING_LIMIT}" step="0.01" value="${escHtml(String(s.dagelijksUitgavelimiet))}" required>
+          <small class="install-hint">Maximaal dagelijks uitgavelimiet: €${escHtml(String(MAX_DAILY_SPENDING_LIMIT))}.</small>
         </div>
         <div class="form-group">
           <label>
