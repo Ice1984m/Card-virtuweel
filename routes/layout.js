@@ -8,6 +8,7 @@ function layout(title, content) {
     { href: '/bridges',      label: 'Routing' },
     { href: '/browser',      label: 'Browser' },
     { href: '/admin',        label: 'Admin' },
+    { href: '/sandbox',      label: '🛠 Sandbox' },
   ];
   const navHtml = navLinks.map(({ href, label }) =>
     `<a href="${href}">${label}</a>`
@@ -36,6 +37,11 @@ function layout(title, content) {
       ${navHtml}
     </div>
   </nav>
+  <div id="update-banner" class="update-banner" style="display:none;" role="alert">
+    <span>🆕 Update beschikbaar – versie <strong class="update-version"></strong></span>
+    <a href="/download/apk" class="update-apk-link btn btn-small" style="margin-left:auto">⬇ APK downloaden</a>
+    <button class="update-dismiss" onclick="this.closest('#update-banner').style.display='none'" aria-label="Melding sluiten">✕</button>
+  </div>
   <main class="container">
     ${content}
   </main>
@@ -66,6 +72,26 @@ function layout(title, content) {
         console.warn('Service worker registratie mislukt:', err);
       });
     }
+    // In-app update check
+    (function () {
+      var UPDATE_KEY = 'cvw_last_version_check';
+      var CHECK_INTERVAL = 3600 * 1000; // 1 hour
+      var lastCheck = Number(localStorage.getItem(UPDATE_KEY) || 0);
+      if (Date.now() - lastCheck < CHECK_INTERVAL) return;
+      fetch('/api/version').then(function (r) { return r.json(); }).then(function (data) {
+        localStorage.setItem(UPDATE_KEY, String(Date.now()));
+        var stored = localStorage.getItem('cvw_installed_version');
+        if (!stored) { localStorage.setItem('cvw_installed_version', data.version); return; }
+        if (stored !== data.version) {
+          var banner = document.getElementById('update-banner');
+          if (banner) {
+            banner.querySelector('.update-version').textContent = data.version;
+            if (data.apkUrl) banner.querySelector('.update-apk-link').href = data.apkUrl;
+            banner.style.display = 'flex';
+          }
+        }
+      }).catch(function () {});
+    })();
   </script>
 </body>
 </html>`;

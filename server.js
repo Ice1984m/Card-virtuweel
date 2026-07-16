@@ -14,6 +14,7 @@ const adminRouter = require('./routes/admin');
 const browserRouter = require('./routes/browser');
 const bridgesRouter = require('./routes/bridges');
 const walletRouter = require('./routes/wallet');
+const sandboxRouter = require('./routes/sandbox');
 
 const app = express();
 const PORT = process.env.PORT || 4242;
@@ -41,6 +42,7 @@ app.use('/admin', adminRouter);
 app.use('/browser', browserRouter);
 app.use('/bridges', bridgesRouter);
 app.use('/wallet', walletRouter);
+app.use('/sandbox', sandboxRouter);
 
 app.get('/', (req, res) => {
   res.send(homePage());
@@ -57,6 +59,17 @@ app.get('/download/apk', (req, res) => {
     return;
   }
   res.redirect(302, validatedDownloadUrl);
+});
+
+app.get('/api/version', (req, res) => {
+  const pkg = require('./package.json');
+  res.json({
+    version: pkg.version || '1.0.0',
+    apkUrl: APK_DOWNLOAD_URL,
+    releasesUrl: 'https://github.com/Ice1984m/Card-virtuweel/releases',
+    environment: 'sandbox',
+    latestReleaseTag: process.env.LATEST_RELEASE_TAG || null,
+  });
 });
 
 app.use((req, res) => {
@@ -122,6 +135,14 @@ function homePage() {
           <p>Multi-hop onion-routing met AES-256-GCM encryptie en Merkle-transparantie.</p>
         </a>
         <a href="/bridges" class="btn btn-activate">▶ Activeer</a>
+      </div>
+      <div class="card-wrapper">
+        <a href="/sandbox" class="card">
+          <span class="icon">🛠️</span>
+          <h2>Sandbox Dev Panel</h2>
+          <p>API-sleutels genereren, developer opties en AI-navigatieassistent.</p>
+        </a>
+        <a href="/sandbox" class="btn btn-activate">▶ Open sandbox</a>
       </div>
       <div class="card-wrapper">
         <a href="/download/apk" class="card">
