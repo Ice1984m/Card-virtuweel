@@ -640,6 +640,12 @@ footer {
   font-size: .9rem;
   margin-top: .25rem;
 }
+.wallet-table-spacing {
+  margin-top: 1rem;
+}
+.wallet-hint-spacing {
+  margin-top: 1rem;
+}
 .checkout-summary {
   display: grid;
   gap: .9rem;

@@ -85,6 +85,7 @@ function maskIban(value) {
   return `${value.slice(0, 4)} **** **** ${value.slice(-4)}`;
 }
 
+// Voert de officiële IBAN MOD-97-10 checksum uit op een genormaliseerd IBAN.
 function hasValidIbanChecksum(iban) {
   const rearranged = `${iban.slice(4)}${iban.slice(0, 4)}`;
   let remainder = 0;

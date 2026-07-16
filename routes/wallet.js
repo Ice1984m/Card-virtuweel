@@ -414,7 +414,7 @@ function renderInvoiceManager(state) {
           <button type="submit" class="btn btn-pay">Factuur aanmaken</button>
         </div>
       </form>
-      <div class="table-wrap" style="margin-top:1rem">
+      <div class="table-wrap wallet-table-spacing">
         <table>
           <thead><tr><th>Factuur</th><th>Bedrag</th><th>Status</th><th>Actie</th></tr></thead>
           <tbody>
@@ -492,7 +492,7 @@ function renderAuditInfo() {
         <li>Alle bevestigingen lopen via een server-side testautorisatiestap.</li>
         <li>Top-ups en betalingen worden gelogd in een audittrail.</li>
       </ul>
-      <p class="install-hint" style="margin-top:1rem">API endpoints: <code>/wallet/api/status</code>, <code>/wallet/api/invoices</code>, <code>/wallet/api/invoices/:id/pay</code>, <code>/wallet/api/wallet/bank-account</code>, <code>/wallet/api/approvals</code> en <code>/wallet/api/intents/:id/confirm</code>.</p>
+      <p class="install-hint wallet-hint-spacing">API endpoints: <code>/wallet/api/status</code>, <code>/wallet/api/invoices</code>, <code>/wallet/api/invoices/:id/pay</code>, <code>/wallet/api/wallet/bank-account</code>, <code>/wallet/api/approvals</code> en <code>/wallet/api/intents/:id/confirm</code>.</p>
     </section>
   `;
 }
