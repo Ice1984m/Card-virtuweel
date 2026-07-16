@@ -67,7 +67,7 @@ app.get('/api/version', (req, res) => {
     version: pkg.version || '1.0.0',
     apkUrl: APK_DOWNLOAD_URL,
     releasesUrl: 'https://github.com/Ice1984m/Card-virtuweel/releases',
-    environment: 'sandbox',
+    environment: process.env.NODE_ENV || 'sandbox',
     latestReleaseTag: process.env.LATEST_RELEASE_TAG || null,
   });
 });

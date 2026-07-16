@@ -25,7 +25,10 @@ const RATE_LIMIT_MAX_WRITES = 10;
 function readSandboxState() {
   try {
     return JSON.parse(fs.readFileSync(SANDBOX_FILE, 'utf8'));
-  } catch (_) {
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      console.warn('[sandbox] Failed to read sandbox state:', err.message);
+    }
     return { apiKeys: [], devOptions: { requireApiKey: false, autoConfirm: false, logLevel: 'info' } };
   }
 }
@@ -45,7 +48,8 @@ function maskKey(key) {
 
 // Simple in-memory rate limiter for sandbox write operations
 const rateLimitMap = new Map();
-function checkRateLimit(ip) {
+function sandboxRateLimit(req, res, next) {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
   const now = Date.now();
   const entry = rateLimitMap.get(ip) || { count: 0, windowStart: now };
   if (now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
@@ -54,7 +58,10 @@ function checkRateLimit(ip) {
   }
   entry.count += 1;
   rateLimitMap.set(ip, entry);
-  return entry.count <= RATE_LIMIT_MAX_WRITES;
+  if (entry.count > RATE_LIMIT_MAX_WRITES) {
+    return res.redirect('/sandbox?err=' + encodeURIComponent('Te veel verzoeken. Probeer het over een minuut opnieuw.'));
+  }
+  next();
 }
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
@@ -92,11 +99,7 @@ router.get('/', (req, res) => {
 });
 
 // Generate API key
-router.post('/apikeys/generate', (req, res) => {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  if (!checkRateLimit(ip)) {
-    return res.redirect('/sandbox?err=' + encodeURIComponent('Te veel verzoeken. Probeer het over een minuut opnieuw.'));
-  }
+router.post('/apikeys/generate', sandboxRateLimit, (req, res) => {
   const sandbox = readSandboxState();
   if ((sandbox.apiKeys || []).length >= MAX_API_KEYS) {
     return res.redirect('/sandbox?err=' + encodeURIComponent(`Maximum aantal API-sleutels (${MAX_API_KEYS}) bereikt.`));
@@ -116,11 +119,7 @@ router.post('/apikeys/generate', (req, res) => {
 });
 
 // Revoke API key
-router.post('/apikeys/:id/revoke', (req, res) => {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  if (!checkRateLimit(ip)) {
-    return res.redirect('/sandbox?err=' + encodeURIComponent('Te veel verzoeken. Probeer het over een minuut opnieuw.'));
-  }
+router.post('/apikeys/:id/revoke', sandboxRateLimit, (req, res) => {
   const sandbox = readSandboxState();
   sandbox.apiKeys = (sandbox.apiKeys || []).filter(k => k.id !== req.params.id);
   writeSandboxState(sandbox);
@@ -128,11 +127,7 @@ router.post('/apikeys/:id/revoke', (req, res) => {
 });
 
 // Save dev options
-router.post('/settings', (req, res) => {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  if (!checkRateLimit(ip)) {
-    return res.redirect('/sandbox?err=' + encodeURIComponent('Te veel verzoeken. Probeer het over een minuut opnieuw.'));
-  }
+router.post('/settings', sandboxRateLimit, (req, res) => {
   const sandbox = readSandboxState();
   sandbox.devOptions = {
     requireApiKey: req.body.requireApiKey === 'true',
@@ -144,11 +139,7 @@ router.post('/settings', (req, res) => {
 });
 
 // Manually add test credit to sandbox wallet
-router.post('/wallet/add-credit', (req, res) => {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  if (!checkRateLimit(ip)) {
-    return res.redirect('/sandbox?err=' + encodeURIComponent('Te veel verzoeken. Probeer het over een minuut opnieuw.'));
-  }
+router.post('/wallet/add-credit', sandboxRateLimit, (req, res) => {
   const amount = Number.parseFloat(req.body.amount);
   if (!Number.isFinite(amount) || amount <= 0 || amount > 9999) {
     return res.redirect('/sandbox?err=' + encodeURIComponent('Ongeldig bedrag (max €9999).'));
@@ -158,7 +149,8 @@ router.post('/wallet/add-credit', (req, res) => {
   let state;
   try {
     state = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
-  } catch (_) {
+  } catch (readErr) {
+    console.warn('[sandbox] add-credit: failed to read payment state:', readErr.message);
     return res.redirect('/sandbox?err=Geen+sandbox+wallet+gevonden.');
   }
 
@@ -184,11 +176,7 @@ router.post('/wallet/add-credit', (req, res) => {
 });
 
 // Reset sandbox wallet (dev shortcut)
-router.post('/wallet/reset', (req, res) => {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  if (!checkRateLimit(ip)) {
-    return res.redirect('/sandbox?err=' + encodeURIComponent('Te veel verzoeken. Probeer het over een minuut opnieuw.'));
-  }
+router.post('/wallet/reset', sandboxRateLimit, (req, res) => {
   resetWallet();
   res.redirect('/sandbox?flash=Sandbox+wallet+gereset');
 });
