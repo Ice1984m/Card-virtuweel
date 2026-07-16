@@ -8,8 +8,8 @@ const { layout } = require('./layout');
 const { escHtml } = require('./helpers');
 const {
   readPaymentState,
-  createSandboxWallet,
   resetWallet,
+  addDevCredit,
 } = require('./paymentService');
 
 const router = express.Router();
@@ -19,6 +19,9 @@ const MASK_PREFIX_LENGTH = 16;
 const MAX_API_KEYS = 20;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_WRITES = 10;
+
+// Temporary in-memory store for newly generated keys (shown once after creation)
+const pendingKeyDisplay = new Map();
 
 // ─── Sandbox state helpers ────────────────────────────────────────────────────
 
@@ -70,6 +73,19 @@ router.get('/', (req, res) => {
   const sandbox = readSandboxState();
   const payment = readPaymentState();
 
+  // Retrieve newly-generated key for one-time display (never in URL)
+  const pendingToken = req.query.newkey;
+  let newKeyBanner = '';
+  if (pendingToken && pendingKeyDisplay.has(pendingToken)) {
+    const newKey = pendingKeyDisplay.get(pendingToken);
+    pendingKeyDisplay.delete(pendingToken);
+    newKeyBanner = `
+      <div class="new-key-banner" role="alert">
+        <strong>🔑 Nieuwe API-sleutel aangemaakt – sla deze nu op, hij wordt niet opnieuw getoond:</strong>
+        <div class="new-key-value"><code class="mono">${escHtml(newKey)}</code></div>
+      </div>`;
+  }
+
   const flash = req.query.flash
     ? `<div class="flash">${escHtml(req.query.flash)}</div>`
     : '';
@@ -82,7 +98,7 @@ router.get('/', (req, res) => {
       <h1>🛠️ Sandbox Developer Panel</h1>
       <a href="/" class="btn btn-secondary">← Home</a>
     </div>
-    ${flash}${err}
+    ${newKeyBanner}${flash}${err}
     <div class="sandbox-layout">
       <section class="sandbox-main">
         ${renderApiKeyPanel(sandbox)}
@@ -106,16 +122,21 @@ router.post('/apikeys/generate', sandboxRateLimit, (req, res) => {
   }
   const label = String(req.body.label || '').trim().slice(0, 60) || 'Mijn sleutel';
   const key = generateApiKey();
+  const keyId = randomUUID();
   sandbox.apiKeys = sandbox.apiKeys || [];
   sandbox.apiKeys.push({
-    id: randomUUID(),
+    id: keyId,
     label,
     key,
     createdAt: new Date().toISOString(),
     active: true,
   });
   writeSandboxState(sandbox);
-  res.redirect(`/sandbox?flash=${encodeURIComponent(`API-sleutel aangemaakt: ${key}`)}`);
+  // Store full key in memory for one-time display (not in URL)
+  const token = randomUUID();
+  pendingKeyDisplay.set(token, key);
+  setTimeout(() => pendingKeyDisplay.delete(token), 5 * 60 * 1000); // expire after 5 min
+  res.redirect(`/sandbox?newkey=${encodeURIComponent(token)}`);
 });
 
 // Revoke API key
@@ -140,39 +161,13 @@ router.post('/settings', sandboxRateLimit, (req, res) => {
 
 // Manually add test credit to sandbox wallet
 router.post('/wallet/add-credit', sandboxRateLimit, (req, res) => {
-  const amount = Number.parseFloat(req.body.amount);
-  if (!Number.isFinite(amount) || amount <= 0 || amount > 9999) {
-    return res.redirect('/sandbox?err=' + encodeURIComponent('Ongeldig bedrag (max €9999).'));
-  }
-
-  const stateFile = process.env.PAYMENT_FILE || path.join(__dirname, '../data/payments.json');
-  let state;
   try {
-    state = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
-  } catch (readErr) {
-    console.warn('[sandbox] add-credit: failed to read payment state:', readErr.message);
-    return res.redirect('/sandbox?err=Geen+sandbox+wallet+gevonden.');
+    const wallet = addDevCredit(req.body.amount);
+    const rounded = Number(wallet.balance);
+    res.redirect(`/sandbox?flash=${encodeURIComponent(`Testtegoed toegevoegd. Huidig saldo: €${rounded.toFixed(2)}.`)}`);
+  } catch (err) {
+    res.redirect('/sandbox?err=' + encodeURIComponent(err.message || 'Kon testtegoed niet toevoegen.'));
   }
-
-  if (!state.wallet) {
-    return res.redirect('/sandbox?err=Maak+eerst+een+sandbox+wallet+aan.');
-  }
-
-  const rounded = Math.round(amount * 100) / 100;
-  state.wallet.balance = (Number(state.wallet.balance || 0) + rounded);
-  state.wallet.availableBalance = (Number(state.wallet.availableBalance || 0) + rounded);
-  state.auditLog = state.auditLog || [];
-  state.auditLog.unshift({
-    id: randomUUID(),
-    type: 'dev.credit_injection',
-    message: `Developer: €${rounded.toFixed(2)} testtegoed toegevoegd.`,
-    meta: { amount: rounded },
-    timestamp: new Date().toISOString(),
-  });
-  state.auditLog = state.auditLog.slice(0, 200);
-  fs.writeFileSync(stateFile, JSON.stringify(state, null, 2));
-
-  res.redirect(`/sandbox?flash=${encodeURIComponent(`€${rounded.toFixed(2)} testtegoed toegevoegd aan wallet.`)}`);
 });
 
 // Reset sandbox wallet (dev shortcut)

@@ -1012,3 +1012,25 @@ footer {
   transition: border-color .15s;
 }
 .sandbox-chat-bar input:focus { outline: none; border-color: var(--primary); background: #fff; }
+
+/* ─── New API key one-time banner ─── */
+.new-key-banner {
+  background: #fefce8;
+  border: 2px solid #ca8a04;
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  color: #713f12;
+}
+.new-key-value {
+  margin-top: .75rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .75rem 1rem;
+  word-break: break-all;
+}
+.new-key-value code {
+  font-size: .88rem;
+  color: var(--text);
+}
