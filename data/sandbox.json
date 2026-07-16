@@ -1,13 +1,5 @@
 {
-  "apiKeys": [
-    {
-      "id": "2f2ca979-b613-4a5e-9fe4-7eb01da89ef5",
-      "label": "Test Key",
-      "key": "cvw_sandbox_874db9516464410b654c540799af16beb3d30d3a4216a073",
-      "createdAt": "2026-07-16T10:51:11.241Z",
-      "active": true
-    }
-  ],
+  "apiKeys": [],
   "devOptions": {
     "requireApiKey": false,
     "autoConfirm": false,

@@ -17,8 +17,10 @@ const router = express.Router();
 const SANDBOX_FILE = path.join(__dirname, '../data/sandbox.json');
 const MASK_PREFIX_LENGTH = 16;
 const MAX_API_KEYS = 20;
+const MAX_LABEL_LENGTH = 60;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_WRITES = 10;
+const PENDING_KEY_DISPLAY_TTL_MS = 5 * 60 * 1000;
 
 // Temporary in-memory store for newly generated keys (shown once after creation)
 const pendingKeyDisplay = new Map();
@@ -120,7 +122,7 @@ router.post('/apikeys/generate', sandboxRateLimit, (req, res) => {
   if ((sandbox.apiKeys || []).length >= MAX_API_KEYS) {
     return res.redirect('/sandbox?err=' + encodeURIComponent(`Maximum aantal API-sleutels (${MAX_API_KEYS}) bereikt.`));
   }
-  const label = String(req.body.label || '').trim().slice(0, 60) || 'Mijn sleutel';
+  const label = String(req.body.label || '').trim().slice(0, MAX_LABEL_LENGTH) || 'Mijn sleutel';
   const key = generateApiKey();
   const keyId = randomUUID();
   sandbox.apiKeys = sandbox.apiKeys || [];
@@ -135,7 +137,7 @@ router.post('/apikeys/generate', sandboxRateLimit, (req, res) => {
   // Store full key in memory for one-time display (not in URL)
   const token = randomUUID();
   pendingKeyDisplay.set(token, key);
-  setTimeout(() => pendingKeyDisplay.delete(token), 5 * 60 * 1000); // expire after 5 min
+  setTimeout(() => pendingKeyDisplay.delete(token), PENDING_KEY_DISPLAY_TTL_MS);
   res.redirect(`/sandbox?newkey=${encodeURIComponent(token)}`);
 });
 
