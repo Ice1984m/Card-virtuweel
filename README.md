@@ -6,11 +6,11 @@ Beheer certificaten, licenties en posts met goedkeuringsworkflow en **NFC/kaartb
 
 ## 📲 App installeren op Android
 
-[![Download APK](https://img.shields.io/badge/⬇%20Download%20APK-installeer%20direct-brightgreen?style=for-the-badge)](https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk)
+[![Download APK](https://img.shields.io/badge/⬇%20Download%20APK-installeer%20direct-brightgreen?style=for-the-badge)](https://card-virtuweel.onrender.com/download/apk)
 
 **3 stappen, klaar:**
 
-1. Tik op de knop hierboven op uw Android-telefoon → APK wordt gedownload
+1. Tik op de knop hierboven op uw Android-telefoon → APK wordt direct gedownload (of u krijgt automatische installatie-instructies als de release nog niet klaarstaat)
 2. Open het gedownloade bestand en tik op **Installeren**  
    *(eenmalig: Instellingen → sta installatie van onbekende bronnen toe)*
 3. Open **Card-virtuweel** vanaf uw startscherm
@@ -27,7 +27,7 @@ Alles is geautomatiseerd via GitHub Actions en Render.com:
 |---|---|
 | Push naar `main` | Server deployt automatisch op Render.com |
 | Push naar `main` | Nieuwe APK wordt automatisch gebouwd en gepubliceerd |
-| Download-URL | `releases/latest/download/Card-virtuweel.apk` altijd actueel |
+| Download-URL | Gebruik `/download/apk` op de live site; deze route downloadt de APK als die bestaat en geeft anders duidelijke fallback-instructies |
 
 De `render.yaml` in deze repo regelt de Render.com-deployment automatisch zodra u de repository koppelt aan uw Render-account.
 
