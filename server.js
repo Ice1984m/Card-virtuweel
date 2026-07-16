@@ -52,6 +52,10 @@ app.get('/install', (req, res) => {
   res.send(installPage());
 });
 
+app.get('/update', (req, res) => {
+  res.send(updatePage());
+});
+
 app.get('/download/apk', (req, res) => {
   const validatedDownloadUrl = safeExternalUrl(APK_DOWNLOAD_URL);
   if (!validatedDownloadUrl) {
@@ -143,6 +147,14 @@ function homePage() {
         </a>
         <a href="/sandbox" class="btn btn-activate">🛠️ Developer paneel</a>
       </div>
+      <div class="card-wrapper">
+        <a href="/update" class="card">
+          <span class="icon">🔄</span>
+          <h2>App bijwerken</h2>
+          <p>Download de nieuwste versie van de Card-virtuweel app om up-to-date te blijven.</p>
+        </a>
+        <a href="/update" class="btn btn-activate">🔄 App bijwerken</a>
+      </div>
     </div>
   `);
 }
@@ -154,6 +166,34 @@ function installPage() {
       <a href="/" class="btn btn-secondary">← Terug naar home</a>
     </div>
     ${renderInstallPanel(false)}
+  `);
+}
+
+function updatePage() {
+  return layout('Card-virtuweel – App bijwerken', `
+    <div class="page-header">
+      <h1>🔄 App bijwerken</h1>
+      <a href="/" class="btn btn-secondary">← Terug naar home</a>
+    </div>
+    <section class="install-panel">
+      <div class="install-panel-header">
+        <div>
+          <h2>📦 Nieuwste versie downloaden</h2>
+          <p>Download de bijgewerkte APK en installeer deze om uw app bij te werken naar de nieuwste versie.</p>
+        </div>
+      </div>
+      <div class="install-actions">
+        <a href="/download/apk" class="btn btn-install">⬇ Bijgewerkte APK downloaden</a>
+      </div>
+      <p class="install-hint">Open de link op uw Android-apparaat en bevestig de installatie om bij te werken.</p>
+      <p class="install-link mono">${escHtml(APK_DOWNLOAD_URL)}</p>
+      <ol class="install-steps">
+        <li>Open deze pagina op uw Android-telefoon.</li>
+        <li>Tik op "Bijgewerkte APK downloaden" en open het gedownloade bestand.</li>
+        <li>Sta de installatie toe als Android om bevestiging vraagt.</li>
+        <li>De app wordt bijgewerkt terwijl uw gegevens behouden blijven.</li>
+      </ol>
+    </section>
   `);
 }
 
