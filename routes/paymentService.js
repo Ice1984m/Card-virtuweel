@@ -8,6 +8,15 @@ const MIN_TOP_UP_AMOUNT = 5;
 const MAX_TOP_UP_AMOUNT = 500;
 const MAX_PURCHASE_AMOUNT = 1000;
 const DAILY_TOP_UP_LIMIT = 2000;
+const MAX_DAILY_SPENDING_LIMIT = 500;
+
+const DEFAULT_WALLET_SETTINGS = {
+  labelNaam: '',
+  dagelijksUitgavelimiet: 500,
+  meldingenIngeschakeld: true,
+  autoBevestigOpladen: false,
+  aiAssistentUrl: '',
+};
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 6;
 const MAX_INVOICE_NUMBER_GENERATION_ATTEMPTS = 10;
@@ -186,6 +195,7 @@ function createSandboxWallet(holderName) {
     linkedBankAccount: null,
     maskedBankAccount: null,
     issuedAt: new Date().toISOString(),
+    settings: { ...DEFAULT_WALLET_SETTINGS },
   };
 
   addAudit(state, 'wallet.requested', 'Sandbox prepaid kaart aangemaakt.', {
@@ -623,6 +633,51 @@ function getGoLiveReadiness(stateInput) {
   };
 }
 
+function updateWalletSettings(input) {
+  const state = readPaymentState();
+  requireWallet(state);
+
+  const payload = input || {};
+  const existing = state.wallet.settings || { ...DEFAULT_WALLET_SETTINGS };
+
+  const labelNaam = String(payload.labelNaam !== undefined ? payload.labelNaam : existing.labelNaam).trim().slice(0, 80);
+
+  const limitInput = Number.parseFloat(payload.dagelijksUitgavelimiet);
+  if (!Number.isFinite(limitInput) || limitInput < 1 || limitInput > MAX_DAILY_SPENDING_LIMIT) {
+    const err = new Error(`Dagelijks uitgavelimiet moet tussen €1,00 en €${MAX_DAILY_SPENDING_LIMIT.toFixed(2)} liggen.`);
+    err.statusCode = 400;
+    throw err;
+  }
+  const dagelijksUitgavelimiet = Math.round(limitInput * 100) / 100;
+
+  const meldingenIngeschakeld = payload.meldingenIngeschakeld === 'true' || payload.meldingenIngeschakeld === true;
+  const autoBevestigOpladen = payload.autoBevestigOpladen === 'true' || payload.autoBevestigOpladen === true;
+
+  const rawUrl = String(payload.aiAssistentUrl !== undefined ? payload.aiAssistentUrl : existing.aiAssistentUrl).trim();
+  if (rawUrl && !/^https:\/\/.{3,}/.test(rawUrl)) {
+    const err = new Error('AI-assistent URL moet een geldige https:// URL zijn.');
+    err.statusCode = 400;
+    throw err;
+  }
+  const aiAssistentUrl = rawUrl;
+
+  state.wallet.settings = {
+    labelNaam,
+    dagelijksUitgavelimiet,
+    meldingenIngeschakeld,
+    autoBevestigOpladen,
+    aiAssistentUrl,
+  };
+  state.wallet.updatedAt = new Date().toISOString();
+
+  addAudit(state, 'wallet.settings.updated', 'Wallet instellingen bijgewerkt.', {
+    walletId: state.wallet.id,
+    settings: state.wallet.settings,
+  });
+  writePaymentState(state);
+  return state.wallet;
+}
+
 function generateApprovalReport(stateInput) {
   const readiness = getGoLiveReadiness(stateInput);
   const renderConfigured = readiness.checks.find((entry) => entry.key === 'render_deployment_configured');
@@ -651,9 +706,12 @@ module.exports = {
   MIN_TOP_UP_AMOUNT,
   MAX_TOP_UP_AMOUNT,
   DAILY_TOP_UP_LIMIT,
+  MAX_DAILY_SPENDING_LIMIT,
+  DEFAULT_WALLET_SETTINGS,
   readPaymentState,
   createSandboxWallet,
   setWalletBankAccount,
+  updateWalletSettings,
   createInvoice,
   createTopUpIntent,
   createPurchaseIntent,
