@@ -9,6 +9,8 @@ const {
   DAILY_TOP_UP_LIMIT,
   readPaymentState,
   createSandboxWallet,
+  createInvoice,
+  createInvoicePaymentIntent,
   createTopUpIntent,
   getIntentById,
   confirmIntent,
@@ -152,9 +154,39 @@ router.get('/api/status', (req, res) => {
     wallet: state.wallet,
     pendingTopUps: state.topUpIntents.filter((entry) => entry.status === 'pending_confirmation'),
     pendingPayments: state.paymentIntents.filter((entry) => entry.status === 'pending_confirmation'),
+    openInvoices: state.invoices.filter((entry) => entry.status === 'open'),
     recentTransactions: state.transactions.slice(0, 10),
     goLiveReadiness: getGoLiveReadiness(state),
   });
+});
+
+router.get('/api/invoices', (req, res) => {
+  const state = readPaymentState();
+  res.json({
+    invoices: state.invoices,
+  });
+});
+
+router.post('/api/invoices', (req, res) => {
+  try {
+    const invoice = createInvoice(req.body);
+    res.status(201).json({ success: true, invoice });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ error: err.message });
+  }
+});
+
+router.post('/api/invoices/:invoiceId/pay', (req, res) => {
+  try {
+    const intent = createInvoicePaymentIntent(req.params.invoiceId);
+    res.json({
+      success: true,
+      intent,
+      checkoutUrl: `/wallet/checkout/${encodeURIComponent(intent.id)}`,
+    });
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ error: err.message });
+  }
 });
 
 router.get('/api/intents/:intentId', (req, res) => {
@@ -317,7 +349,7 @@ function renderAuditInfo() {
         <li>Alle bevestigingen lopen via een server-side testautorisatiestap.</li>
         <li>Top-ups en betalingen worden gelogd in een audittrail.</li>
       </ul>
-      <p class="install-hint" style="margin-top:1rem">API endpoints: <code>/wallet/api/status</code>, <code>/wallet/api/approvals</code> en <code>/wallet/api/intents/:id/confirm</code>.</p>
+      <p class="install-hint" style="margin-top:1rem">API endpoints: <code>/wallet/api/status</code>, <code>/wallet/api/invoices</code>, <code>/wallet/api/invoices/:id/pay</code>, <code>/wallet/api/approvals</code> en <code>/wallet/api/intents/:id/confirm</code>.</p>
     </section>
   `;
 }
