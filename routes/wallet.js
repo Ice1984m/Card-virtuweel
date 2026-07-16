@@ -7,9 +7,11 @@ const {
   MIN_TOP_UP_AMOUNT,
   MAX_TOP_UP_AMOUNT,
   DAILY_TOP_UP_LIMIT,
+  DEFAULT_WALLET_SETTINGS,
   readPaymentState,
   createSandboxWallet,
   setWalletBankAccount,
+  updateWalletSettings,
   createInvoice,
   createInvoicePaymentIntent,
   createTopUpIntent,
@@ -50,11 +52,13 @@ router.get('/', (req, res) => {
     <div class="wallet-layout">
       <section class="wallet-main">
         ${wallet ? renderWalletSummary(wallet) : renderCardRequest()}
-        ${wallet ? renderWalletMenu() : ''}
+        ${wallet ? renderWalletMenu(wallet) : ''}
+        ${wallet ? renderWalletSettings(wallet) : ''}
         ${wallet ? renderBankAccountForm(wallet) : ''}
         ${wallet ? renderTopUpForm() : ''}
         ${wallet ? renderInvoiceManager(state) : ''}
         ${wallet ? renderPendingIntents(state) : ''}
+        ${wallet ? renderAiAssistant(wallet) : ''}
       </section>
       <aside class="wallet-side">
         ${renderAuditInfo()}
@@ -99,6 +103,19 @@ router.post('/bank-account', (req, res) => {
   } catch (err) {
     res.status(err.statusCode || 500).send(layout('Rekeningnummer fout', `
       <div class="page-header"><h1>Rekeningnummer fout</h1></div>
+      <div class="error">${escHtml(err.message)}</div>
+      <a href="/wallet" class="btn">← Terug naar wallet</a>
+    `));
+  }
+});
+
+router.post('/settings', (req, res) => {
+  try {
+    updateWalletSettings(req.body);
+    res.redirect('/wallet?flash=Wallet+instellingen+opgeslagen');
+  } catch (err) {
+    res.status(err.statusCode || 500).send(layout('Instellingen fout', `
+      <div class="page-header"><h1>Instellingen fout</h1></div>
       <div class="error">${escHtml(err.message)}</div>
       <a href="/wallet" class="btn">← Terug naar wallet</a>
     `));
@@ -339,16 +356,88 @@ function renderWalletSummary(wallet) {
   `;
 }
 
-function renderWalletMenu() {
+function renderWalletMenu(wallet) {
+  const settings = wallet.settings || {};
+  const hasBot = Boolean(settings.aiAssistentUrl);
   return `
     <section class="wallet-card">
       <h2>Wallet menu</h2>
       <div class="form-actions">
-        <a href="#rekening" class="btn btn-secondary">Rekening koppelen</a>
-        <a href="#opladen" class="btn btn-secondary">Saldo opladen</a>
-        <a href="#facturen" class="btn btn-secondary">Facturen beheren</a>
-        <a href="#transacties" class="btn btn-secondary">Transacties bekijken</a>
+        <a href="#instellingen" class="btn btn-secondary">⚙️ Instellingen</a>
+        <a href="#rekening" class="btn btn-secondary">🏦 Rekening koppelen</a>
+        <a href="#opladen" class="btn btn-secondary">💰 Saldo opladen</a>
+        <a href="#facturen" class="btn btn-secondary">🧾 Facturen beheren</a>
+        <a href="#transacties" class="btn btn-secondary">📊 Transacties bekijken</a>
+        ${hasBot ? `<a href="#ai-assistent" class="btn btn-secondary">🤖 AI-assistent</a>` : ''}
+        <a href="/wallet/api/status" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">📤 API status</a>
+        <a href="/wallet/api/approvals" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">📋 Goedkeuringsrapport</a>
       </div>
+    </section>
+  `;
+}
+
+function renderWalletSettings(wallet) {
+  const s = { ...DEFAULT_WALLET_SETTINGS, ...(wallet.settings || {}) };
+  return `
+    <section id="instellingen" class="wallet-card">
+      <h2>⚙️ Wallet instellingen</h2>
+      <p class="wallet-copy">Stel standaardwaarden in die automatisch actief zijn vanaf het moment dat de wallet live gaat.</p>
+      <form method="POST" action="/wallet/settings" class="form-card">
+        <div class="form-group">
+          <label for="labelNaam">Wallet label / naam</label>
+          <input id="labelNaam" name="labelNaam" type="text" maxlength="80" placeholder="Bijv. Mijn prepaidkaart" value="${escHtml(s.labelNaam)}">
+        </div>
+        <div class="form-group">
+          <label for="dagelijksUitgavelimiet">Dagelijks uitgavelimiet (€)</label>
+          <input id="dagelijksUitgavelimiet" name="dagelijksUitgavelimiet" type="number" min="1" max="${MAX_TOP_UP_AMOUNT}" step="0.01" value="${escHtml(String(s.dagelijksUitgavelimiet))}" required>
+          <small class="install-hint">Maximaal €${escHtml(String(MAX_TOP_UP_AMOUNT))} per instelling. Daglimiet top-up: €${escHtml(String(DAILY_TOP_UP_LIMIT))}.</small>
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" name="meldingenIngeschakeld" value="true"${s.meldingenIngeschakeld ? ' checked' : ''}>
+            Meldingen ingeschakeld
+          </label>
+        </div>
+        <div class="form-group">
+          <label>
+            <input type="checkbox" name="autoBevestigOpladen" value="true"${s.autoBevestigOpladen ? ' checked' : ''}>
+            Automatisch bevestigen bij opladen (sandbox)
+          </label>
+        </div>
+        <div class="form-group">
+          <label for="aiAssistentUrl">Google Cloud AI-bot URL (optioneel)</label>
+          <input id="aiAssistentUrl" name="aiAssistentUrl" type="url" placeholder="https://..." value="${escHtml(s.aiAssistentUrl)}">
+          <small class="install-hint">Voer de webhook- of chat-URL in van uw zelfgemaakte Google Cloud AI-bot.</small>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn">Instellingen opslaan</button>
+        </div>
+      </form>
+    </section>
+  `;
+}
+
+function renderAiAssistant(wallet) {
+  const settings = wallet.settings || {};
+  const url = settings.aiAssistentUrl || '';
+  if (!url) {
+    return '';
+  }
+  return `
+    <section id="ai-assistent" class="wallet-card">
+      <h2>🤖 Google Cloud AI-assistent</h2>
+      <p class="wallet-copy">Geconfigureerde AI-bot voor wallet-sturing en automatisch programmeren. De bot is bereikbaar via de onderstaande interface.</p>
+      <div class="install-hint" style="margin-bottom:0.75rem;">Bot URL: <a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer" class="mono">${escHtml(url)}</a></div>
+      <iframe
+        src="${escHtml(url)}"
+        title="Google Cloud AI-assistent"
+        width="100%"
+        height="480"
+        style="border:1px solid #ddd;border-radius:6px;background:#fafafa;"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+        loading="lazy"
+      ></iframe>
+      <p class="install-hint">Werkt de bot niet in het venster? <a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer">Open in nieuw tabblad</a>.</p>
     </section>
   `;
 }
