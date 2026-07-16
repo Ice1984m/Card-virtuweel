@@ -702,6 +702,10 @@ function generateApprovalReport(stateInput) {
   };
 }
 
+function resetWallet() {
+  writePaymentState(defaultState());
+}
+
 module.exports = {
   MIN_TOP_UP_AMOUNT,
   MAX_TOP_UP_AMOUNT,
@@ -721,4 +725,5 @@ module.exports = {
   confirmIntent,
   getGoLiveReadiness,
   generateApprovalReport,
+  resetWallet,
 };
