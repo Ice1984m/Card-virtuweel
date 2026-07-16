@@ -75,9 +75,9 @@ function layout(title, content) {
     // In-app update check
     (function () {
       var UPDATE_KEY = 'cvw_last_version_check';
-      var CHECK_INTERVAL = 3600 * 1000; // 1 hour
+      var ONE_HOUR_MS = 3600 * 1000;
       var lastCheck = Number(localStorage.getItem(UPDATE_KEY) || 0);
-      if (Date.now() - lastCheck < CHECK_INTERVAL) return;
+      if (Date.now() - lastCheck < ONE_HOUR_MS) return;
       fetch('/api/version').then(function (r) { return r.json(); }).then(function (data) {
         localStorage.setItem(UPDATE_KEY, String(Date.now()));
         var stored = localStorage.getItem('cvw_installed_version');

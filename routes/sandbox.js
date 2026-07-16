@@ -15,6 +15,10 @@ const {
 const router = express.Router();
 
 const SANDBOX_FILE = path.join(__dirname, '../data/sandbox.json');
+const MASK_PREFIX_LENGTH = 16;
+const MAX_API_KEYS = 20;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_WRITES = 10;
 
 // ─── Sandbox state helpers ────────────────────────────────────────────────────
 
@@ -35,8 +39,22 @@ function generateApiKey() {
 }
 
 function maskKey(key) {
-  if (!key || key.length < 16) return '****';
-  return `${key.slice(0, 16)}…${key.slice(-6)}`;
+  if (!key || key.length < MASK_PREFIX_LENGTH) return '****';
+  return `${key.slice(0, MASK_PREFIX_LENGTH)}…${key.slice(-6)}`;
+}
+
+// Simple in-memory rate limiter for sandbox write operations
+const rateLimitMap = new Map();
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip) || { count: 0, windowStart: now };
+  if (now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    entry.count = 0;
+    entry.windowStart = now;
+  }
+  entry.count += 1;
+  rateLimitMap.set(ip, entry);
+  return entry.count <= RATE_LIMIT_MAX_WRITES;
 }
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
@@ -75,7 +93,14 @@ router.get('/', (req, res) => {
 
 // Generate API key
 router.post('/apikeys/generate', (req, res) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  if (!checkRateLimit(ip)) {
+    return res.redirect('/sandbox?err=' + encodeURIComponent('Te veel verzoeken. Probeer het over een minuut opnieuw.'));
+  }
   const sandbox = readSandboxState();
+  if ((sandbox.apiKeys || []).length >= MAX_API_KEYS) {
+    return res.redirect('/sandbox?err=' + encodeURIComponent(`Maximum aantal API-sleutels (${MAX_API_KEYS}) bereikt.`));
+  }
   const label = String(req.body.label || '').trim().slice(0, 60) || 'Mijn sleutel';
   const key = generateApiKey();
   sandbox.apiKeys = sandbox.apiKeys || [];
@@ -92,6 +117,10 @@ router.post('/apikeys/generate', (req, res) => {
 
 // Revoke API key
 router.post('/apikeys/:id/revoke', (req, res) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  if (!checkRateLimit(ip)) {
+    return res.redirect('/sandbox?err=' + encodeURIComponent('Te veel verzoeken. Probeer het over een minuut opnieuw.'));
+  }
   const sandbox = readSandboxState();
   sandbox.apiKeys = (sandbox.apiKeys || []).filter(k => k.id !== req.params.id);
   writeSandboxState(sandbox);
@@ -100,6 +129,10 @@ router.post('/apikeys/:id/revoke', (req, res) => {
 
 // Save dev options
 router.post('/settings', (req, res) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  if (!checkRateLimit(ip)) {
+    return res.redirect('/sandbox?err=' + encodeURIComponent('Te veel verzoeken. Probeer het over een minuut opnieuw.'));
+  }
   const sandbox = readSandboxState();
   sandbox.devOptions = {
     requireApiKey: req.body.requireApiKey === 'true',
@@ -112,6 +145,10 @@ router.post('/settings', (req, res) => {
 
 // Manually add test credit to sandbox wallet
 router.post('/wallet/add-credit', (req, res) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  if (!checkRateLimit(ip)) {
+    return res.redirect('/sandbox?err=' + encodeURIComponent('Te veel verzoeken. Probeer het over een minuut opnieuw.'));
+  }
   const amount = Number.parseFloat(req.body.amount);
   if (!Number.isFinite(amount) || amount <= 0 || amount > 9999) {
     return res.redirect('/sandbox?err=' + encodeURIComponent('Ongeldig bedrag (max €9999).'));
@@ -148,6 +185,10 @@ router.post('/wallet/add-credit', (req, res) => {
 
 // Reset sandbox wallet (dev shortcut)
 router.post('/wallet/reset', (req, res) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  if (!checkRateLimit(ip)) {
+    return res.redirect('/sandbox?err=' + encodeURIComponent('Te veel verzoeken. Probeer het over een minuut opnieuw.'));
+  }
   resetWallet();
   res.redirect('/sandbox?flash=Sandbox+wallet+gereset');
 });
