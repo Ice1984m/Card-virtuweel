@@ -1,6 +1,6 @@
 # Card-virtuweel
 
-Beheer certificaten, licenties en posts met goedkeuringsworkflow en **NFC/kaartbetaling**.
+Beheer certificaten, licenties en posts met goedkeuringsworkflow en een **sandbox prepaid wallet**.
 
 ---
 
@@ -47,17 +47,27 @@ De `render.yaml` in deze repo regelt de Render.com-deployment automatisch zodra 
 - **Posts & Advertenties** – Maak posts aan die eerst worden goedgekeurd voordat betaling mogelijk is
 - **Admin Paneel** – Keur certificaten en posts goed of wijs ze af
 - **Betaalgating** – De betaaloptie verschijnt pas na goedkeuring door een admin
-- **NFC-betaling** – Betaal via NFC (Web NFC API) op Android in Chrome
+- **Sandbox wallet** – Vraag een testkaart aan, laad op via een server-side autorisatieflow en betaal met saldo
+- **Auditlog** – Top-ups, bevestigingen en mislukte autorisaties worden bijgehouden
 - **PWA** – Ook installeerbaar via Chrome → menu ⋮ → "Toevoegen aan startscherm"
 
-## NFC-betaling
+## Sandbox betaalflow
 
-Vereisten: Chrome voor Android (v89+), NFC ingeschakeld, pagina via HTTPS.
+De repository gebruikt geen echte PAN-, CVC-, itsme- of bankgegevens. In plaats daarvan:
 
-1. Ga naar een goedgekeurde post → tabblad "📲 NFC Betalen"
-2. Klik op "Start NFC-betaling" en houd uw NFC-kaart tegen de telefoon
+1. Open `/wallet` en maak een sandbox prepaid kaart aan
+2. Start een top-up en bevestig deze via de sandbox providerpagina
+3. Ga naar een goedgekeurde post en start daar de beveiligde betaalautorisatie
+4. De app toont pas bevestigd saldo of een voltooide aankoop na server-side verwerking
 
-> Voor echte betalingsverwerking integreert u een betaalprovider (bijv. Stripe, Adyen).
+> Voor productie integreert u een erkende provider voor issuing, SCA en webhooks.
+
+### API checks voor livegang
+
+- `GET /wallet/api/status` toont walletstatus, openstaande bevestigingen en live-goedkeuringschecks
+- `GET /wallet/api/approvals` genereert een sandbox-dev live/Render goedkeuringsrapport
+- `GET /wallet/api/intents/:id` toont of een top-up of betaling is gelukt of mislukt
+- `POST /wallet/api/intents/:id/confirm` voert een testbevestiging uit met `decision=approve|fail|cancel`
 
 ---
 

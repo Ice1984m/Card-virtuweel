@@ -20,6 +20,7 @@ function layout(title, content) {
   <nav class="topnav">
     <a href="/" class="brand">Card-virtuweel</a>
     <div class="nav-links">
+      <a href="/wallet">Wallet</a>
       <a href="/certificates">Certificaten</a>
       <a href="/posts">Posts</a>
       <a href="/bridges">Routing</a>

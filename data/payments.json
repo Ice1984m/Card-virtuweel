@@ -1,0 +1,8 @@
+{
+  "wallet": null,
+  "topUpIntents": [],
+  "paymentIntents": [],
+  "transactions": [],
+  "auditLog": [],
+  "processedWebhooks": []
+}

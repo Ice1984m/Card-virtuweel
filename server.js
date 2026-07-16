@@ -13,6 +13,7 @@ const postsRouter = require('./routes/posts');
 const adminRouter = require('./routes/admin');
 const browserRouter = require('./routes/browser');
 const bridgesRouter = require('./routes/bridges');
+const walletRouter = require('./routes/wallet');
 
 const app = express();
 const PORT = process.env.PORT || 4242;
@@ -39,6 +40,7 @@ app.use('/posts', postsRouter);
 app.use('/admin', adminRouter);
 app.use('/browser', browserRouter);
 app.use('/bridges', bridgesRouter);
+app.use('/wallet', walletRouter);
 
 app.get('/', (req, res) => {
   res.send(homePage());
@@ -96,6 +98,14 @@ function homePage() {
           <p>Keur certificaten en posts goed of af.</p>
         </a>
         <a href="/admin" class="btn btn-activate">▶ Activeer</a>
+      </div>
+      <div class="card-wrapper">
+        <a href="/wallet" class="card">
+          <span class="icon">💳</span>
+          <h2>Sandbox Wallet</h2>
+          <p>Vraag een prepaid testkaart aan, laad veilig op en bekijk transacties.</p>
+        </a>
+        <a href="/wallet" class="btn btn-activate">▶ Open wallet</a>
       </div>
       <div class="card-wrapper">
         <a href="/browser" class="card">
