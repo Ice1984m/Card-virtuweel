@@ -222,9 +222,9 @@ function createInvoice(input) {
       err.statusCode = 400;
       throw err;
     }
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    if (parsedDueDate.getTime() < startOfToday.getTime()) {
+    const dueDateKey = parsedDueDate.toISOString().slice(0, 10);
+    const todayKey = new Date().toISOString().slice(0, 10);
+    if (dueDateKey < todayKey) {
       const err = new Error('Vervaldatum mag niet in het verleden liggen.');
       err.statusCode = 400;
       throw err;
@@ -442,6 +442,11 @@ function processWebhookEvent(event) {
             invoice.status = 'paid';
             invoice.paidAt = intent.confirmedAt;
             invoice.paymentIntentId = intent.id;
+          } else {
+            addAudit(state, 'invoice.missing', `Betaling bevestigd maar factuur ${intent.invoiceId} ontbreekt in opslag.`, {
+              intentId: intent.id,
+              invoiceId: intent.invoiceId,
+            });
           }
         }
         pushTransaction(state, {
