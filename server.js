@@ -51,7 +51,7 @@ app.get('/install', (req, res) => {
 app.get('/download/apk', (req, res) => {
   const validatedDownloadUrl = safeExternalUrl(APK_DOWNLOAD_URL);
   if (!validatedDownloadUrl) {
-    res.status(404).send(apkNotFoundPage(null));
+    res.status(500).send(apkConfigErrorPage());
     return;
   }
   res.redirect(302, validatedDownloadUrl);
@@ -193,6 +193,19 @@ function apkNotFoundPage(status) {
       <p>De APK kon niet worden gevonden (HTTP ${status || '?'}).</p>
       <p>De APK-release is mogelijk nog niet gepubliceerd. Probeer het later opnieuw of installeer de app als PWA via Chrome.</p>
       <p class="mono">APK URL: <a href="${escHtml(APK_DOWNLOAD_URL)}" target="_blank" rel="noopener noreferrer">${escHtml(APK_DOWNLOAD_URL)}</a></p>
+      <div style="margin-top:1.5rem">
+        <a href="/install" class="btn">📦 Installatie-instructies</a>
+        <a href="/" class="btn btn-secondary">← Terug naar home</a>
+      </div>
+    </div>
+  `);
+}
+
+function apkConfigErrorPage() {
+  return layout('APK download niet beschikbaar', `
+    <div class="hero">
+      <h1>⚠️ APK download tijdelijk niet beschikbaar</h1>
+      <p>De APK-downloadlink is ongeldig geconfigureerd. Probeer het later opnieuw.</p>
       <div style="margin-top:1.5rem">
         <a href="/install" class="btn">📦 Installatie-instructies</a>
         <a href="/" class="btn btn-secondary">← Terug naar home</a>
