@@ -53,13 +53,26 @@ jobs:
           HOST=$(echo "$URL" | sed 's|https\?://||' | cut -d'/' -f1)
           echo "host=$HOST" >> "$GITHUB_OUTPUT"
 
+      - name: Bepaal release-tag
+        id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=latest" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: twa-manifest.json aanmaken
         run: |
-          HOST_URL="${{ steps.app_url.outputs.url }}"
-          HOST="${{ steps.app_url.outputs.host }}"
           node - <<'EOF'
+          const fs = require("fs");
           const hostUrl = process.env.HOST_URL;
           const host    = process.env.HOST;
+          const tagName = process.env.TAG_NAME || "latest";
+          const semver  = tagName.replace(/^v/, "") || "1.0.0";
+          const [major, minor, patch] = semver.split(".").map(Number);
+          const versionCode = (major || 1) * 10000 + (minor || 0) * 100 + (patch || 0);
+          const pkgVersion  = JSON.parse(fs.readFileSync("package.json")).version || semver;
           const manifest = {
             packageId: "com.ice1984m.cardvirtuweel",
             host,
@@ -78,8 +91,8 @@ jobs:
             isChromeOSOnly: false,
             isMetaQuest: false,
             enableNotifications: false,
-            appVersionName: "1.0.0",
-            appVersionCode: 1,
+            appVersionName: pkgVersion,
+            appVersionCode: versionCode,
             signingKey: { path: "./android.keystore", alias: "card-virtuweel" },
             signingKeyPassphrase: "",
             keyStorePassphrase: "",
@@ -94,22 +107,24 @@ jobs:
             alphaDependencies: { enabled: false },
             fallbackType: "customtabs"
           };
-          require("fs").writeFileSync("twa-manifest.json", JSON.stringify(manifest, null, 2));
-          console.log("twa-manifest.json aangemaakt voor host:", host);
+          fs.writeFileSync("twa-manifest.json", JSON.stringify(manifest, null, 2));
+          console.log(`twa-manifest.json aangemaakt: host=${host} versie=${pkgVersion} (code ${versionCode})`);
           EOF
         env:
           HOST_URL: ${{ steps.app_url.outputs.url }}
           HOST: ${{ steps.app_url.outputs.host }}
+          TAG_NAME: ${{ steps.tag.outputs.name }}
 
       - name: Keystore aanmaken of herstellen
         run: |
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android.keystore
-            STORE_PASS="${{ secrets.KEYSTORE_PASS }}"
-            KEY_PASS="${{ secrets.KEYSTORE_PASS }}"
+          if [ -n "$KEYSTORE_BASE64_SECRET" ]; then
+            echo "$KEYSTORE_BASE64_SECRET" | base64 -d > android.keystore
+            STORE_PASS="$KEYSTORE_PASS_SECRET"
+            KEY_PASS="$KEYSTORE_PASS_SECRET"
           else
-            STORE_PASS="virtuweel2024"
-            KEY_PASS="virtuweel2024"
+            echo "::notice::Geen KEYSTORE_BASE64 secret gevonden – tijdelijk willekeurig wachtwoord wordt aangemaakt. Voeg KEYSTORE_BASE64 en KEYSTORE_PASS toe voor een stabiele release-sleutel."
+            STORE_PASS="$(openssl rand -base64 32)"
+            KEY_PASS="$STORE_PASS"
             keytool -genkeypair \
               -dname "CN=Card-virtuweel, OU=Mobile, O=Card-virtuweel, L=Amsterdam, S=NH, C=NL" \
               -alias card-virtuweel \
@@ -119,10 +134,13 @@ jobs:
               -keystore android.keystore \
               -storepass "$STORE_PASS" \
               -keypass "$KEY_PASS" 2>/dev/null
-            echo "::notice::Tijdelijke keystore aangemaakt. Voeg KEYSTORE_BASE64 en KEYSTORE_PASS toe als repository-secrets voor een stabiele release-sleutel."
           fi
+          echo "::add-mask::$STORE_PASS"
           echo "STORE_PASS=$STORE_PASS" >> "$GITHUB_ENV"
           echo "KEY_PASS=$KEY_PASS"     >> "$GITHUB_ENV"
+        env:
+          KEYSTORE_BASE64_SECRET: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASS_SECRET: ${{ secrets.KEYSTORE_PASS }}
 
       - name: Wachtwoorden in twa-manifest.json invullen
         run: |
@@ -154,15 +172,6 @@ jobs:
         run: |
           APK=$(find . -name "*.apk" | grep -v "unaligned" | head -1)
           cp "$APK" Card-virtuweel.apk
-
-      - name: Bepaal release-tag
-        id: tag
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-          else
-            echo "name=latest" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: GitHub Release aanmaken en APK uploaden
         uses: softprops/action-gh-release@v2
