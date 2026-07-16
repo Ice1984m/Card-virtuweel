@@ -130,7 +130,8 @@ function homePage() {
 }
 
 function installPage(query) {
-  const statusCode = Number.parseInt(query?.status, 10);
+  const rawStatusCode = query?.status;
+  const statusCode = rawStatusCode ? Number.parseInt(rawStatusCode, 10) : null;
   const apkUnavailable = query?.apk === 'unavailable';
   const unavailableReason = Number.isInteger(statusCode) ? `HTTP ${statusCode}` : null;
   return layout('Card-virtuweel – App installeren', `
@@ -146,8 +147,8 @@ function renderInstallPanel(compact, state) {
   const fallbackNotice = state?.apkUnavailable
     ? `
         <div class="install-fallback">
-          <strong>APK tijdelijk niet beschikbaar.</strong>
-          <p>De directe download werkt nu niet${state.unavailableReason ? ` (${escHtml(state.unavailableReason)})` : ''}. Probeer opnieuw of installeer via de PWA-stappen hieronder.</p>
+          <strong>⚠️ APK tijdelijk niet beschikbaar.</strong>
+          <p>De directe download werkt nu niet${state.unavailableReason ? ` (${escHtml(state.unavailableReason)})` : ''}. Probeer het opnieuw of installeer via de PWA-stappen hieronder.</p>
         </div>
       `
     : '';
