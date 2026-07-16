@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Card-virtuweel</string>
+    <string name="splash_subtitle">Certificaten &amp; Licenties</string>
     <string name="app_url">https://card-virtuweel.onrender.com</string>
 </resources>
