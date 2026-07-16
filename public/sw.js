@@ -1,10 +1,11 @@
 'use strict';
 
-const CACHE_NAME = 'card-virtuweel-v1';
+const CACHE_NAME = 'card-virtuweel-v2';
 const STATIC_ASSETS = [
   '/',
   '/style.css',
   '/manifest.json',
+  '/install.js',
 ];
 
 self.addEventListener('install', event => {

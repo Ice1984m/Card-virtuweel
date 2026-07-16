@@ -100,14 +100,14 @@ function homePage() {
         <a href="/bridges" class="btn btn-activate">▶ Activeer</a>
       </div>
       <div class="card-wrapper">
-        <a href="${APK_DOWNLOAD_URL}" class="card" download>
+        <a href="/install" class="card">
           <span class="icon">📲</span>
-          <h2>Download APK</h2>
-          <p>Installeer de Card-virtuweel app direct op uw Android-apparaat.</p>
+          <h2>App installeren</h2>
+          <p>Installeer de Card-virtuweel app op uw Android-apparaat of als PWA.</p>
         </a>
-        <a href="${APK_DOWNLOAD_URL}" class="btn btn-activate" download>⬇ Download APK</a>
-        <p class="mono">APK URL: <a href="${APK_DOWNLOAD_URL}" download>${APK_DOWNLOAD_URL}</a></p>
-        <p class="mono">README URL: <a href="${README_URL}" target="_blank" rel="noopener noreferrer">${README_URL}</a></p>
+        <button class="btn btn-activate btn-pwa-install" style="display:none;">📲 Installeer App</button>
+        ${APK_DOWNLOAD_URL ? `<a href="${escHtml(APK_DOWNLOAD_URL)}" class="btn btn-activate" target="_blank" rel="noopener noreferrer">⬇ Download APK</a>` : ''}
+        <a href="/install" class="btn btn-secondary btn-small">ℹ Installatie-instructies</a>
       </div>
     </div>
   `);
@@ -124,41 +124,36 @@ function installPage() {
 }
 
 function renderInstallPanel(compact) {
-  const installStep = APK_DOWNLOAD_URL
-    ? 'Tik op "Download APK" en open het gedownload bestand.'
-    : 'Gebruik "Toevoegen aan startscherm" in Chrome zolang er nog geen APK-link is ingesteld.';
-  const downloadBlock = APK_DOWNLOAD_URL
+  const apkBlock = APK_DOWNLOAD_URL
     ? `
         <div class="install-actions">
           <a href="${escHtml(APK_DOWNLOAD_URL)}" class="btn btn-install" target="_blank" rel="noopener noreferrer">⬇ Download APK</a>
         </div>
-        <p class="install-hint">Open de link op uw Android-apparaat en bevestig daarna de installatie van het APK-bestand.</p>
+        <p class="install-hint">Open de APK-link op uw Android-apparaat en bevestig de installatie. Zorg dat "Installatie van onbekende bronnen" is ingeschakeld in de Android-instellingen.</p>
         <p class="install-link mono">${escHtml(APK_DOWNLOAD_URL)}</p>
       `
-    : `
-        <div class="install-fallback">
-          <strong>Geen APK-link ingesteld.</strong>
-          <p>Voeg <code>APK_DOWNLOAD_URL</code> toe aan de omgeving om hier een directe Android-download te tonen.</p>
-        </div>
-      `;
+    : '';
 
   return `
     <section class="install-panel${compact ? ' install-panel-compact' : ''}">
       <div class="install-panel-header">
         <div>
-          <h2>📦 Android app installeren</h2>
-          <p>Download de APK direct of gebruik de bestaande PWA-installatie via Chrome.</p>
+          <h2>📦 App installeren</h2>
+          <p>Installeer Card-virtuweel als app op uw apparaat.</p>
         </div>
-        ${compact ? '<a href="/install" class="btn btn-secondary btn-small">Installatie openen</a>' : ''}
+        ${compact ? '<a href="/install" class="btn btn-secondary btn-small">Meer info</a>' : ''}
       </div>
-      ${downloadBlock}
+      <div class="install-actions">
+        <button class="btn btn-install btn-pwa-install" style="display:none;">📲 Installeer als app</button>
+      </div>
+      <p class="install-hint pwa-install-hint" style="display:none;">Tik op "Installeer als app" om de app direct toe te voegen aan uw startscherm.</p>
+      ${apkBlock}
       <ol class="install-steps">
-        <li>Open deze pagina op uw Android-telefoon.</li>
-        <li>${installStep}</li>
-        <li>Sta installatie toe als Android om bevestiging vraagt.</li>
-        <li>Open de app na installatie vanaf uw startscherm.</li>
+        <li>Open deze pagina op uw Android-telefoon in Chrome.</li>
+        <li>${APK_DOWNLOAD_URL ? 'Tik op "Download APK" om de Android-app te installeren, of tik op "Installeer als app" voor de PWA.' : 'Tik op "Installeer als app" als die knop verschijnt, of gebruik het Chrome-menu ⋮ → "Toevoegen aan startscherm".'}</li>
+        <li>Bevestig de installatie en open de app vanaf uw startscherm.</li>
       </ol>
-      <p class="install-hint">PWA fallback: open de site in Chrome en kies menu ⋮ → "Toevoegen aan startscherm".</p>
+      <p class="install-hint">PWA installatie: open de site in Chrome en kies menu ⋮ → "Toevoegen aan startscherm" of "App installeren".</p>
     </section>
   `;
 }

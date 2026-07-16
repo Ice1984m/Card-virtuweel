@@ -33,6 +33,7 @@ function layout(title, content) {
   <footer>
     <p>&copy; ${new Date().getFullYear()} Card-virtuweel</p>
   </footer>
+  <script src="/install.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(function(err) {
