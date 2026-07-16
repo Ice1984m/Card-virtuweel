@@ -44,12 +44,10 @@ public class MainActivity extends AppCompatActivity {
                     return false;
                 }
                 Intent browserIntent = new Intent(Intent.ACTION_VIEW, uri);
-                if (browserIntent.resolveActivity(getPackageManager()) != null) {
-                    try {
-                        startActivity(browserIntent);
-                    } catch (ActivityNotFoundException | SecurityException err) {
-                        Log.w(TAG, "Could not open external link: " + uri, err);
-                    }
+                try {
+                    startActivity(browserIntent);
+                } catch (ActivityNotFoundException | SecurityException err) {
+                    Log.w(TAG, "Could not open external link: " + uri, err);
                 }
                 return true;
             }
