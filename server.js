@@ -114,7 +114,7 @@ function homePage() {
           <h2>Download APK</h2>
           <p>Installeer de Card-virtuweel app direct op uw Android-apparaat.</p>
         </a>
-        <a href="/download/apk" class="btn btn-activate">📲 Installeer APK</a>
+        <a href="/download/apk" class="btn btn-activate">📲 APK installeren</a>
         <p class="mono">APK URL: <a href="${APK_DOWNLOAD_URL}" target="_blank" rel="noopener noreferrer">${APK_DOWNLOAD_URL}</a></p>
         <p class="mono">README URL: <a href="${README_URL}" target="_blank" rel="noopener noreferrer">${README_URL}</a></p>
       </div>
