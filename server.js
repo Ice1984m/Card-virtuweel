@@ -131,9 +131,10 @@ function homePage() {
 
 function installPage(query) {
   const rawStatusCode = query?.status;
-  const statusCode = rawStatusCode ? Number.parseInt(rawStatusCode, 10) : null;
+  const parsedStatusCode = rawStatusCode ? Number.parseInt(rawStatusCode, 10) : null;
+  const statusCode = Number.isInteger(parsedStatusCode) ? parsedStatusCode : null;
   const apkUnavailable = query?.apk === 'unavailable';
-  const unavailableReason = Number.isInteger(statusCode) ? `HTTP ${statusCode}` : null;
+  const unavailableReason = statusCode !== null ? `HTTP ${statusCode}` : null;
   return layout('Card-virtuweel – App installeren', `
     <div class="page-header">
       <h1>📲 App installeren</h1>
