@@ -35,7 +35,7 @@ De NFC-betaalfunctie maakt gebruik van de **[Web NFC API](https://developer.mozi
 2. Tik op het menu (⋮) → "Toevoegen aan startscherm"
 3. De app wordt geïnstalleerd en is offline beschikbaar
 
-## APK downloaden
+## APK Downloaden
 
 - APK URL: https://github.com/Ice1984m/Card-virtuweel/releases/latest/download/Card-virtuweel.apk
 - README URL: https://github.com/Ice1984m/Card-virtuweel#readme
