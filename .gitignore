@@ -3,3 +3,8 @@ uploads/
 *.log
 data/bridges.json
 data/routing-log.json
+
+# Android keystore – nooit committen
+android.keystore
+*.jks
+*.p12

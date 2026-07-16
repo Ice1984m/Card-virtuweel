@@ -19,6 +19,8 @@ const DEFAULT_APK_DOWNLOAD_URL = 'https://github.com/Ice1984m/Card-virtuweel/rel
 const ENV_APK_DOWNLOAD_URL = process.env.APK_DOWNLOAD_URL || '';
 const CONFIGURED_APK_DOWNLOAD_URL = safeExternalUrl(ENV_APK_DOWNLOAD_URL);
 const APK_DOWNLOAD_URL = CONFIGURED_APK_DOWNLOAD_URL || DEFAULT_APK_DOWNLOAD_URL;
+const APK_PACKAGE_ID = 'com.ice1984m.cardvirtuweel';
+const ASSETLINKS_SHA256 = process.env.ASSETLINKS_SHA256 || '';
 
 if (ENV_APK_DOWNLOAD_URL && !CONFIGURED_APK_DOWNLOAD_URL) {
   console.warn('Ongeldige APK_DOWNLOAD_URL in omgeving, fallback naar standaard APK-link.');
@@ -34,6 +36,21 @@ app.use('/posts', postsRouter);
 app.use('/admin', adminRouter);
 app.use('/browser', browserRouter);
 app.use('/bridges', bridgesRouter);
+
+app.get('/.well-known/assetlinks.json', (req, res) => {
+  if (!ASSETLINKS_SHA256) {
+    return res.status(404).json({ error: 'assetlinks niet geconfigureerd' });
+  }
+  res.setHeader('Content-Type', 'application/json');
+  res.json([{
+    relation: ['delegate_permission/common.handle_all_urls'],
+    target: {
+      namespace: 'android_app',
+      package_name: APK_PACKAGE_ID,
+      sha256_cert_fingerprints: [ASSETLINKS_SHA256],
+    },
+  }]);
+});
 
 app.get('/', (req, res) => {
   res.send(homePage());
@@ -100,13 +117,13 @@ function homePage() {
         <a href="/bridges" class="btn btn-activate">▶ Activeer</a>
       </div>
       <div class="card-wrapper">
-        <a href="${APK_DOWNLOAD_URL}" class="card" download>
+        <a href="${APK_DOWNLOAD_URL}" class="card" target="_blank" rel="noopener noreferrer">
           <span class="icon">📲</span>
           <h2>Download APK</h2>
           <p>Installeer de Card-virtuweel app direct op uw Android-apparaat.</p>
         </a>
-        <a href="${APK_DOWNLOAD_URL}" class="btn btn-activate" download>⬇ Download APK</a>
-        <p class="mono">APK URL: <a href="${APK_DOWNLOAD_URL}" download>${APK_DOWNLOAD_URL}</a></p>
+        <a href="${APK_DOWNLOAD_URL}" class="btn btn-activate" target="_blank" rel="noopener noreferrer">⬇ Download APK</a>
+        <p class="mono">APK URL: <a href="${APK_DOWNLOAD_URL}" target="_blank" rel="noopener noreferrer">${APK_DOWNLOAD_URL}</a></p>
         <p class="mono">README URL: <a href="${README_URL}" target="_blank" rel="noopener noreferrer">${README_URL}</a></p>
       </div>
     </div>

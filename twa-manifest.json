@@ -1,0 +1,39 @@
+{
+  "packageId": "com.ice1984m.cardvirtuweel",
+  "host": "card-virtuweel.onrender.com",
+  "name": "Card-virtuweel",
+  "launcherName": "Virtuweel",
+  "display": "standalone",
+  "orientation": "portrait",
+  "themeColor": "#2563eb",
+  "backgroundColor": "#f1f5f9",
+  "startUrl": "/",
+  "iconUrl": "https://card-virtuweel.onrender.com/icons/icon-512.png",
+  "maskableIconUrl": "https://card-virtuweel.onrender.com/icons/icon-512.png",
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://card-virtuweel.onrender.com/manifest.json",
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "enableNotifications": false,
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "card-virtuweel"
+  },
+  "signingKeyPassphrase": "",
+  "keyStorePassphrase": "",
+  "enableSiteSettingsShortcut": true,
+  "minSdkVersion": 19,
+  "targetSdkVersion": 34,
+  "navigationColor": "#2563eb",
+  "navigationColorDark": "#1d4ed8",
+  "navigationDividerColor": "#2563eb",
+  "navigationDividerColorDark": "#1d4ed8",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "fallbackType": "customtabs"
+}
