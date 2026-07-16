@@ -12,6 +12,7 @@ const LOCAL_APK_PATH = path.join(__dirname, '..', 'public', 'Card-virtuweel.apk'
 const LOCAL_APK_URL = '/Card-virtuweel.apk';
 
 // Check once at startup whether a local APK is available.
+// A server restart is required after adding or removing the APK file.
 const localApkExists = fs.existsSync(LOCAL_APK_PATH);
 
 function getApkUrl(configuredUrl) {
@@ -55,9 +56,9 @@ function apkDownloadPage(apkUrl) {
         <ol class="apk-steps">
           <li>Open deze pagina op uw Android-telefoon.</li>
           <li>Tik op "Download APK" en wacht tot het bestand is opgeslagen.</li>
-          <li>Ga naar <strong>Instellingen → Beveiliging</strong> en zet <em>Installatie uit onbekende bronnen</em> aan.</li>
-          <li>Open de bestandsbeheerder, zoek <code>Card-virtuweel.apk</code> en tik erop.</li>
-          <li>Volg de installatiestappen en open de app vanaf uw startscherm.</li>
+          <li>Open de bestandsbeheerder of Downloads-app en tik op <code>Card-virtuweel.apk</code>. Android vraagt dan om toestemming voor installatie vanuit deze bron.</li>
+          <li>Geef toestemming en volg de installatiestappen.</li>
+          <li>Open de app vanaf uw startscherm.</li>
         </ol>
         <p class="apk-hint">
           <strong>PWA-alternatief:</strong> open de site in Chrome en kies ⋮ → "Toevoegen aan startscherm".
