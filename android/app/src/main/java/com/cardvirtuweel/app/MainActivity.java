@@ -1,5 +1,6 @@
 package com.cardvirtuweel.app;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
@@ -39,6 +40,10 @@ public class MainActivity extends AppCompatActivity {
                 if (uri.getHost() != null && uri.getHost().equals(appHost.getHost())) {
                     return false;
                 }
+                Intent browserIntent = new Intent(Intent.ACTION_VIEW, uri);
+                if (browserIntent.resolveActivity(getPackageManager()) != null) {
+                    startActivity(browserIntent);
+                }
                 return true;
             }
 
@@ -63,4 +68,3 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 }
-
