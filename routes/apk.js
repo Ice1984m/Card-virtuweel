@@ -11,8 +11,11 @@ const router = express.Router();
 const LOCAL_APK_PATH = path.join(__dirname, '..', 'public', 'Card-virtuweel.apk');
 const LOCAL_APK_URL = '/Card-virtuweel.apk';
 
+// Check once at startup whether a local APK is available.
+const localApkExists = fs.existsSync(LOCAL_APK_PATH);
+
 function getApkUrl(configuredUrl) {
-  if (fs.existsSync(LOCAL_APK_PATH)) return LOCAL_APK_URL;
+  if (localApkExists) return LOCAL_APK_URL;
   return configuredUrl || '';
 }
 
@@ -45,19 +48,13 @@ function apkDownloadPage(apkUrl) {
       </div>
     `;
 
-  return layout('Card-virtuweel – Download APK', `
-    <div class="apk-page">
-      <div class="apk-hero">
-        <span class="apk-icon">📲</span>
-        <h1>Download Card-virtuweel APK</h1>
-        <p class="subtitle">Directe installatie op uw Android-apparaat.</p>
-      </div>
-      ${downloadBlock}
+  const installSteps = hasApk
+    ? `
       <div class="apk-steps-card">
         <h2>Installatie-instructies</h2>
         <ol class="apk-steps">
           <li>Open deze pagina op uw Android-telefoon.</li>
-          <li>${hasApk ? 'Tik op "Download APK" en wacht tot het bestand is opgeslagen.' : 'Wacht totdat er een APK-bestand beschikbaar is.'}</li>
+          <li>Tik op "Download APK" en wacht tot het bestand is opgeslagen.</li>
           <li>Ga naar <strong>Instellingen → Beveiliging</strong> en zet <em>Installatie uit onbekende bronnen</em> aan.</li>
           <li>Open de bestandsbeheerder, zoek <code>Card-virtuweel.apk</code> en tik erop.</li>
           <li>Volg de installatiestappen en open de app vanaf uw startscherm.</li>
@@ -66,6 +63,28 @@ function apkDownloadPage(apkUrl) {
           <strong>PWA-alternatief:</strong> open de site in Chrome en kies ⋮ → "Toevoegen aan startscherm".
         </p>
       </div>
+    `
+    : `
+      <div class="apk-steps-card">
+        <h2>PWA-installatie (alternatief)</h2>
+        <ol class="apk-steps">
+          <li>Open deze website in Chrome op uw Android-telefoon.</li>
+          <li>Tik op het menu ⋮ rechtsboven.</li>
+          <li>Kies "Toevoegen aan startscherm".</li>
+          <li>Bevestig en open de app vanaf uw startscherm.</li>
+        </ol>
+      </div>
+    `;
+
+  return layout('Card-virtuweel – Download APK', `
+    <div class="apk-page">
+      <div class="apk-hero">
+        <span class="apk-icon">📲</span>
+        <h1>Download Card-virtuweel APK</h1>
+        <p class="subtitle">Directe installatie op uw Android-apparaat.</p>
+      </div>
+      ${downloadBlock}
+      ${installSteps}
       <div class="apk-back">
         <a href="/" class="btn btn-secondary">← Terug naar home</a>
       </div>

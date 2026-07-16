@@ -19,7 +19,7 @@ const ENV_APK_DOWNLOAD_URL = process.env.APK_DOWNLOAD_URL || '';
 const CONFIGURED_APK_DOWNLOAD_URL = safeExternalUrl(ENV_APK_DOWNLOAD_URL);
 
 if (ENV_APK_DOWNLOAD_URL && !CONFIGURED_APK_DOWNLOAD_URL) {
-  console.warn('Ongeldige APK_DOWNLOAD_URL in omgeving, fallback naar standaard APK-link.');
+  console.warn('Ongeldige APK_DOWNLOAD_URL in omgeving, geen APK-URL ingesteld.');
 }
 
 // Expose configured APK URL to routers via app.locals
