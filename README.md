@@ -43,6 +43,28 @@ De `render.yaml` in deze repo regelt de Render.com-deployment automatisch zodra 
 
 ---
 
+## 🛠️ APK bouwen
+
+Vereisten: JDK 17 + Android SDK (API 34).
+
+```bash
+cd android
+./gradlew assembleDebug --no-daemon
+```
+
+Debug APK:
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Optioneel (unsigned release APK):
+
+```bash
+cd android
+./gradlew assembleRelease --no-daemon
+```
+
 ## Functionaliteiten
 
 - **Certificaten & Licenties** – Upload en beheer uw certificaten (VOG, KvK, ISO, etc.)
