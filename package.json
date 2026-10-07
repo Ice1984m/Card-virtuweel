@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/Ice1984m/Card-virtuweel#readme",
   "dependencies": {
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.5",
     "express": "^5.2.1",
     "multer": "^2.2.0",
     "uuid": "^14.0.1"
